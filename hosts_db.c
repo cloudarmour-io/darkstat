@@ -753,8 +753,6 @@ hashtable_reduce(struct hashtable *ht)
          b = next;
       }
    }
-   verbosef("hashtable_reduce: removed %u buckets, left %u",
-      rmd, ht->count);
    hashtable_rehash(ht, ht->bits); /* is this needed? */
 }
 

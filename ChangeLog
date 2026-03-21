@@ -1,3 +1,6 @@
+v3.0.722 (20 Oct 2025)
+	- Add support for multiple -l args (thanks to catap)
+
 v3.0.721 (12 Jan 2022)
 	- Replace xxd with hex-ify to reduce build dependencies.
 

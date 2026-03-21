@@ -1,6 +1,10 @@
 Installation instructions
 -------------------------
 
+$ git clone https://github.com/emikulic/darkstat
+$ cd darkstat
+$ autoconf
+$ autoheader
 $ ./configure
 $ make
 $ make install
@@ -30,8 +34,8 @@ $ make install DESTDIR=/chroot/whatever
 Portability
 -----------
 
-I, the darkstat maintainer, mostly develop darkstat on Debian GNU/Linux, but
-mostly run darkstat on FreeBSD.
+darkstat is mostly developed on Debian GNU/Linux, but mostly run darkstat on
+FreeBSD.
 
 darkstat usually builds out-of-the-box on FreeBSD, although you should probably
 install it from ports.
@@ -44,9 +48,34 @@ In the past, darkstat has also been reported to work on:
  - NetBSD
  - Mac OS X
  - AIX
- - Ubuntu (you need build-essential, zlib1g-dev, libpcap-dev)
+ - Debian / Ubuntu (you need build-essential, zlib1g-dev, libpcap-dev)
  - Mandrake
  - OpenSUSE
 
 Sadly, darkstat doesn't run on GNU/Hurd 0.3 because the BPF there doesn't
 support non-blocking operation (FIONBIO).
+
+
+Development hints
+-----------------
+
+Test the binary without daemonizing it (running it in the background):
+
+  sudo ./darkstat -i eth0 --no-daemon --verbose
+
+To view the manpage:
+
+  nroff -man darkstat.8 | less
+
+To build with sanitizers:
+
+  CFLAGS="-g -fsanitize=address -fsanitize=undefined" ./configure
+
+To see what make is doing:
+
+  make V=1
+
+Suggested valgrind invocation:
+(note that valgrind doesn't work with a -fsanitize=address build)
+
+  sudo valgrind --leak-check=full --show-reachable=yes ./darkstat -i eth0 --no-daemon --verbose --chroot $PWD --export DB --import DB --daylog DAYLOG --user $USER
