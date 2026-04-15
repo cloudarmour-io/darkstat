@@ -23,7 +23,7 @@
 #include <string.h>
 #include <time.h>
 
-#if defined(__MACH__) && !defined(__gnu_hurd__)
+#if defined(__MACH__) && !defined(__gnu_hurd__) && !defined(CLOCK_MONOTONIC)
 /* Fake up clock_gettime() on OS X. */
 #  include <sys/time.h>
 #  include <inttypes.h>
@@ -58,7 +58,7 @@
       }
       return -1;
    }
-#endif  /* __MACH__ */
+#endif  /* __MACH__ && !CLOCK_MONOTONIC */
 
 static struct timespec clock_real, clock_mono;
 static int now_initialized = 0;
