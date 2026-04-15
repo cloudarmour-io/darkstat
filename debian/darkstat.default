@@ -1,0 +1,14 @@
+# /etc/default/darkstat
+# Set START_DARKSTAT=true to allow service start.
+# Set INTERFACE to the Linux interface to monitor (for example: eth0, ens5).
+
+START_DARKSTAT=true
+INTERFACE=
+PORT=667
+BINDADDR=
+BASE_PATH=/
+
+# Extra darkstat CLI flags appended as-is.
+# Examples:
+# EXTRA_OPTS="--no-dns --local-only -l 192.168.1.0/255.255.255.0"
+EXTRA_OPTS=

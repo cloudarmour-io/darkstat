@@ -1,0 +1,7 @@
+darkstat (3.0.722+git20260415-1) unstable; urgency=medium
+
+  * Package JSON-enabled darkstat for APT distribution.
+  * Add systemd unit and /etc/default configuration.
+  * Add maintainer scripts for system user and state directory.
+
+ -- CloudArmour Packaging Team <opensource@cloudarmour.io>  Wed, 15 Apr 2026 12:15:00 +0530

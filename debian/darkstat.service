@@ -1,0 +1,19 @@
+[Unit]
+Description=darkstat network traffic monitor
+Documentation=man:darkstat(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/darkstat
+ExecStart=/usr/lib/darkstat/darkstat-wrapper
+Restart=on-failure
+RestartSec=5s
+
+# darkstat opens capture sockets as root then drops privileges itself.
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

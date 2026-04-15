@@ -1,0 +1,14 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	if [ ! -x ./configure ]; then autoreconf -fi; fi
+	dh_auto_configure -- \
+		--prefix=/usr \
+		--sbindir=/usr/sbin \
+		--mandir=/usr/share/man \
+		--with-privdrop-user=darkstat

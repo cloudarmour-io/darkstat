@@ -1,0 +1,18 @@
+Source: darkstat
+Section: net
+Priority: optional
+Maintainer: CloudArmour Packaging Team <opensource@cloudarmour.io>
+Build-Depends: debhelper-compat (= 13), autoconf, automake, libpcap-dev, zlib1g-dev
+Standards-Version: 4.7.0
+Rules-Requires-Root: binary-targets
+Homepage: https://unix4lyfe.org/darkstat/
+
+Package: darkstat
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
+Description: lightweight real-time network traffic monitor with web UI
+ darkstat sniffs packets on a chosen network interface, accumulates traffic
+ statistics (hosts, ports, protocols, graphs), and serves them over HTTP.
+ .
+ This packaging branch includes JSON export support at /json to simplify
+ integrations with monitoring and automation systems.

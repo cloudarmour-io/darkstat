@@ -1,0 +1,2 @@
+debian/darkstat.default etc/default
+debian/darkstat-wrapper usr/lib/darkstat

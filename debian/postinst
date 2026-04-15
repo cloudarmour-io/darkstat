@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+  configure)
+    if ! getent group darkstat >/dev/null; then
+      addgroup --system darkstat
+    fi
+    if ! getent passwd darkstat >/dev/null; then
+      adduser --system \
+        --ingroup darkstat \
+        --home /var/lib/darkstat \
+        --no-create-home \
+        --gecos "darkstat daemon user" \
+        darkstat
+    fi
+    install -d -o darkstat -g darkstat -m 0750 /var/lib/darkstat
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

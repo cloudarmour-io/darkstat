@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+  purge)
+    rm -rf /var/lib/darkstat
+    if getent passwd darkstat >/dev/null; then
+      deluser --system darkstat >/dev/null || true
+    fi
+    if getent group darkstat >/dev/null; then
+      delgroup --system darkstat >/dev/null || true
+    fi
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

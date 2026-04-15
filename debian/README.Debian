@@ -1,0 +1,20 @@
+darkstat Debian packaging notes
+==============================
+
+Service configuration
+---------------------
+
+Edit /etc/default/darkstat and set:
+
+  INTERFACE=<linux-interface>
+
+Then restart:
+
+  sudo systemctl restart darkstat
+
+JSON endpoint test
+------------------
+
+After traffic is flowing, verify JSON export:
+
+  curl -s http://127.0.0.1:667/json | jq .

@@ -1,0 +1,40 @@
+#!/bin/sh
+set -eu
+
+: "${START_DARKSTAT:=true}"
+: "${INTERFACE:=}"
+: "${PORT:=667}"
+: "${BINDADDR:=}"
+: "${BASE_PATH:=/}"
+: "${EXTRA_OPTS:=}"
+
+case "${START_DARKSTAT}" in
+  1|yes|true|TRUE|Yes|YES)
+    ;;
+  *)
+    echo "darkstat disabled by START_DARKSTAT=${START_DARKSTAT}" >&2
+    exit 1
+    ;;
+esac
+
+if [ -z "${INTERFACE}" ]; then
+  echo "INTERFACE is empty in /etc/default/darkstat" >&2
+  exit 1
+fi
+
+set -- /usr/sbin/darkstat --no-daemon --syslog --user darkstat -i "${INTERFACE}" -p "${PORT}"
+
+if [ -n "${BINDADDR}" ]; then
+  set -- "$@" -b "${BINDADDR}"
+fi
+
+if [ -n "${BASE_PATH}" ]; then
+  set -- "$@" --base "${BASE_PATH}"
+fi
+
+if [ -n "${EXTRA_OPTS}" ]; then
+  # shellcheck disable=SC2086
+  set -- "$@" ${EXTRA_OPTS}
+fi
+
+exec "$@"

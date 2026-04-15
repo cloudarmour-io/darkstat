@@ -1,0 +1,23 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: darkstat
+Source: https://github.com/emikulic/darkstat
+
+Files: *
+Copyright: 2001-2016 Emil Mikulic and contributors
+License: GPL-2
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License version 2.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in /usr/share/common-licenses/GPL-2.
+
+Files: bsd.c now.c
+Copyright: 2011-2014 Emil Mikulic
+License: ISC
+ Permission to use, copy, modify, and/or distribute this software for any
+ purpose with or without fee is hereby granted, provided that the above
+ copyright notice and this permission notice appear in all copies.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ MERCHANTABILITY AND FITNESS.
