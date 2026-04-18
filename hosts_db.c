@@ -1215,6 +1215,12 @@ static const unsigned char
 
 static void text_metrics_counter(struct str *buf, const char *metric, const char *type, const char *help);
 static void text_metrics_format_host(const struct bucket *b, const void *user_data);
+
+struct text_json_ctx {
+   struct str *buf;
+   int first;
+};
+
 static void text_json_format_host(const struct bucket *b, const void *user_data);
 
 
@@ -1224,33 +1230,78 @@ static void text_json_format_host(const struct bucket *b, const void *user_data)
  * Web interface: export stats in JSON text format on /json
  */
 struct str *
-text_json()
+text_json(const char *qs)
 {
    struct str *buf = str_make();
+   const struct bucket **table;
+   unsigned int i, start = 0, end = 0;
+   enum sort_dir sort = TOTAL;
+   int full = 0;
+   char *qs_start = qs_get(qs, "start");
+   char *qs_sort = qs_get(qs, "sort");
+   char *qs_full = qs_get(qs, "full");
+   struct text_json_ctx ctx;
+
+   if (qs_full != NULL) {
+      full = 1;
+      free(qs_full);
+   }
+
+   if (qs_sort != NULL) {
+      if (strcmp(qs_sort, "total") == 0) sort = TOTAL;
+      else if (strcmp(qs_sort, "in") == 0) sort = IN;
+      else if (strcmp(qs_sort, "out") == 0) sort = OUT;
+      else if (strcmp(qs_sort, "lastseen") == 0) sort = LASTSEEN;
+   }
+
+   if (qs_start != NULL) {
+      char *ep;
+      unsigned long val;
+
+      errno = 0;
+      val = strtoul(qs_start, &ep, 10);
+      if ((errno != ERANGE) && (*ep == '\0'))
+         start = (unsigned int)val;
+   }
+
    str_append(buf, "[");
+   table = hashtable_list_buckets(hosts_db);
+   if (table != NULL) {
+      if (full) {
+         start = 0;
+         end = hosts_db->count;
+      } else {
+         if (start >= hosts_db->count)
+            start = 0;
+         end = MIN(hosts_db->count, (uint32_t)start + MAX_ENTRIES);
+      }
 
-   hashtable_foreach(hosts_db, &text_json_format_host, (void *)buf);
+      qsort_buckets(table, hosts_db->count, start, end, sort);
+      ctx.buf = buf;
+      ctx.first = 1;
+      for (i = start; i < end; i++)
+         text_json_format_host(table[i], &ctx);
+      free(table);
+   }
+   str_append(buf, "]");
 
-   size_t len;
-   char *con;
-   str_extract(buf, &len, &con);
-   con[len-1] = '\0';
-
-   struct str *buf2 = str_make();
-   str_append(buf2, con);
-
-   str_append(buf2, "]");
-   return buf2;
+   if (qs_start != NULL) free(qs_start);
+   if (qs_sort != NULL) free(qs_sort);
+   return buf;
 }
 
 static void
 text_json_format_host(const struct bucket *b,
    const void *user_data)
 {
-   struct str *buf = (struct str *)user_data;
-   
+   struct text_json_ctx *ctx = (struct text_json_ctx *)user_data;
+   struct str *buf = ctx->buf;
 
-  const char *ip = addr_to_str(&(b->u.host.addr));
+   const char *ip = addr_to_str(&(b->u.host.addr));
+
+   if (!ctx->first)
+      str_append(buf, ",");
+   ctx->first = 0;
 
    str_appendf(buf,
       "{"
@@ -1301,7 +1352,7 @@ text_json_format_host(const struct bucket *b,
       }
    }
 
-   str_appendf(buf, "},");
+   str_append(buf, "}");
 
    /* Only resolve hosts "on demand" */
    if (b->u.host.dns == NULL)

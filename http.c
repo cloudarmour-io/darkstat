@@ -696,7 +696,7 @@ static void process_get(struct connection *conn)
         conn->mime_type = mime_type_text_prometheus;
     }
     else if (str_starts_with(safe_url, "/json")) {
-        struct str *buf = text_json();
+        struct str *buf = text_json(conn->query);
         str_extract(buf, &(conn->reply_length), &(conn->reply));
         conn->mime_type = mime_type_text_json;
     }
