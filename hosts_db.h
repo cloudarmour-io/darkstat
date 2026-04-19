@@ -21,8 +21,16 @@ struct host {
    uint8_t mac_addr[6];
    /* last_seen_mono is converted to/from time_t in export/import.
     * It can be negative (due to machine reboots).
-    */
+   */
    int64_t last_seen_mono;
+   /* JSON event tracking state:
+    * - event_seq increments only when a host transitions from closed->open.
+    * - event_opened_mono/event_closed_mono track session boundaries.
+    */
+   uint64_t event_seq;
+   int64_t event_opened_mono;
+   int64_t event_closed_mono;
+   int event_is_open;
    struct hashtable *ports_tcp;
    struct hashtable *ports_tcp_remote;
    struct hashtable *ports_udp;

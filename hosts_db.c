@@ -22,6 +22,7 @@
 
 #include <netdb.h>  /* struct addrinfo */
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -231,6 +232,10 @@ make_func_host(const void *key)
    h->addr = CASTKEY(struct addr);
    h->dns = NULL;
    h->last_seen_mono = 0;
+   h->event_seq = 0;
+   h->event_opened_mono = 0;
+   h->event_closed_mono = 0;
+   h->event_is_open = 0;
    memset(&h->mac_addr, 0, sizeof(h->mac_addr));
    h->ports_tcp = NULL;
    h->ports_tcp_remote = NULL;
@@ -1219,9 +1224,136 @@ static void text_metrics_format_host(const struct bucket *b, const void *user_da
 struct text_json_ctx {
    struct str *buf;
    int first;
+   int64_t now_mono;
+   unsigned int close_secs;
 };
 
 static void text_json_format_host(const struct bucket *b, const void *user_data);
+
+#define JSON_EVENT_CLOSE_SECS_DEFAULT 1800
+
+static uint64_t
+fnv1a_init(void)
+{
+   return 1469598103934665603ULL;
+}
+
+static uint64_t
+fnv1a_update(uint64_t hash, const void *data, size_t len)
+{
+   const uint8_t *p = data;
+   size_t i;
+   for (i = 0; i < len; i++) {
+      hash ^= p[i];
+      hash *= 1099511628211ULL;
+   }
+   return hash;
+}
+
+static uint64_t
+fnv1a_update_lc(uint64_t hash, const char *s)
+{
+   while (*s != '\0') {
+      const unsigned char c = (unsigned char)*s;
+      const uint8_t lc = (uint8_t)tolower(c);
+      hash = fnv1a_update(hash, &lc, sizeof(lc));
+      s++;
+   }
+   return hash;
+}
+
+static void
+mac_to_str(const uint8_t mac[6], char out[18])
+{
+   snprintf(out, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+static uint64_t
+host_merge_checksum(const struct bucket *b)
+{
+   uint64_t hash = fnv1a_init();
+   const char *ip = addr_to_str(&(b->u.host.addr));
+   char mac[18];
+
+   mac_to_str(b->u.host.mac_addr, mac);
+   hash = fnv1a_update(hash, ip, strlen(ip));
+   hash = fnv1a_update(hash, "|", 1);
+   hash = fnv1a_update_lc(hash, (b->u.host.dns == NULL) ? "" : b->u.host.dns);
+   hash = fnv1a_update(hash, "|", 1);
+   hash = fnv1a_update_lc(hash, mac);
+   return hash;
+}
+
+static uint64_t
+host_identity_checksum(const struct bucket *b)
+{
+   uint64_t hash = fnv1a_init();
+   const char *ip = addr_to_str(&(b->u.host.addr));
+   char mac[18];
+
+   mac_to_str(b->u.host.mac_addr, mac);
+   hash = fnv1a_update(hash, ip, strlen(ip));
+   hash = fnv1a_update(hash, "|", 1);
+   hash = fnv1a_update_lc(hash, mac);
+   return hash;
+}
+
+static unsigned int
+json_event_close_secs(const char *qs)
+{
+   unsigned int close_secs = JSON_EVENT_CLOSE_SECS_DEFAULT;
+   char *qs_close = qs_get(qs, "event_close_secs");
+
+   if (qs_close != NULL) {
+      char *ep;
+      unsigned long v;
+      errno = 0;
+      v = strtoul(qs_close, &ep, 10);
+      if ((errno != ERANGE) && (*ep == '\0') && (v > 0))
+         close_secs = (unsigned int)v;
+      free(qs_close);
+   }
+   return close_secs;
+}
+
+static int
+host_is_active(const struct host *h, const int64_t now_mono, const unsigned int close_secs)
+{
+   if (h->last_seen_mono == 0)
+      return 0;
+   if (h->last_seen_mono > now_mono)
+      return 1;
+   return (now_mono - h->last_seen_mono) <= (int64_t)close_secs;
+}
+
+static void
+host_event_update(struct host *h,
+                  const int64_t now_mono,
+                  const unsigned int close_secs)
+{
+   const int active = host_is_active(h, now_mono, close_secs);
+
+   if (h->event_seq == 0) {
+      h->event_seq = 1;
+      h->event_opened_mono = h->last_seen_mono;
+      h->event_is_open = active;
+      h->event_closed_mono = active ? 0 : now_mono;
+      return;
+   }
+
+   if (active) {
+      if (!h->event_is_open) {
+         h->event_seq++;
+         h->event_is_open = 1;
+         h->event_opened_mono = h->last_seen_mono;
+         h->event_closed_mono = 0;
+      }
+   } else if (h->event_is_open) {
+      h->event_is_open = 0;
+      h->event_closed_mono = now_mono;
+   }
+}
 
 
 
@@ -1279,6 +1411,8 @@ text_json(const char *qs)
       qsort_buckets(table, hosts_db->count, start, end, sort);
       ctx.buf = buf;
       ctx.first = 1;
+      ctx.now_mono = now_mono();
+      ctx.close_secs = json_event_close_secs(qs);
       for (i = start; i < end; i++)
          text_json_format_host(table[i], &ctx);
       free(table);
@@ -1296,8 +1430,17 @@ text_json_format_host(const struct bucket *b,
 {
    struct text_json_ctx *ctx = (struct text_json_ctx *)user_data;
    struct str *buf = ctx->buf;
-
+   struct host *h = (struct host *)&b->u.host;
+   const uint64_t merge_cksum = host_merge_checksum(b);
+   const uint64_t ident_cksum = host_identity_checksum(b);
    const char *ip = addr_to_str(&(b->u.host.addr));
+   time_t opened_at = 0, closed_at = 0;
+
+   host_event_update(h, ctx->now_mono, ctx->close_secs);
+   if (h->event_opened_mono != 0)
+      opened_at = mono_to_real(h->event_opened_mono);
+   if (h->event_closed_mono != 0)
+      closed_at = mono_to_real(h->event_closed_mono);
 
    if (!ctx->first)
       str_append(buf, ",");
@@ -1309,6 +1452,21 @@ text_json_format_host(const struct bucket *b,
       "\"hostname\":\"%s\",",
       ip,
       (b->u.host.dns == NULL) ? "" : b->u.host.dns);
+
+   str_appendf(buf,
+      "\"mergeKey\":\"%016llx\","
+      "\"eventId\":\"%016llx-%qu\","
+      "\"eventSeq\":%qu,"
+      "\"eventStatus\":\"%s\","
+      "\"eventOpenedAt\":%qd,"
+      "\"eventClosedAt\":%qd,",
+      (llu)merge_cksum,
+      (llu)ident_cksum,
+      (qu)h->event_seq,
+      (qu)h->event_seq,
+      h->event_is_open ? "open" : "closed",
+      (qd)opened_at,
+      (qd)closed_at);
 
    if (hosts_db_show_macs)
       str_appendf(buf,
