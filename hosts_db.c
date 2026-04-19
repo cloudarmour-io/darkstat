@@ -1434,6 +1434,7 @@ text_json_format_host(const struct bucket *b,
    const uint64_t merge_cksum = host_merge_checksum(b);
    const uint64_t ident_cksum = host_identity_checksum(b);
    const char *ip = addr_to_str(&(b->u.host.addr));
+   char merge_hex[17], event_id[38];
    time_t opened_at = 0, closed_at = 0;
 
    host_event_update(h, ctx->now_mono, ctx->close_secs);
@@ -1441,6 +1442,9 @@ text_json_format_host(const struct bucket *b,
       opened_at = mono_to_real(h->event_opened_mono);
    if (h->event_closed_mono != 0)
       closed_at = mono_to_real(h->event_closed_mono);
+   snprintf(merge_hex, sizeof(merge_hex), "%016llx", (llu)merge_cksum);
+   snprintf(event_id, sizeof(event_id), "%016llx-%llu",
+      (llu)ident_cksum, (llu)h->event_seq);
 
    if (!ctx->first)
       str_append(buf, ",");
@@ -1454,15 +1458,14 @@ text_json_format_host(const struct bucket *b,
       (b->u.host.dns == NULL) ? "" : b->u.host.dns);
 
    str_appendf(buf,
-      "\"mergeKey\":\"%016llx\","
-      "\"eventId\":\"%016llx-%qu\","
+      "\"mergeKey\":\"%s\","
+      "\"eventId\":\"%s\","
       "\"eventSeq\":%qu,"
       "\"eventStatus\":\"%s\","
       "\"eventOpenedAt\":%qd,"
       "\"eventClosedAt\":%qd,",
-      (llu)merge_cksum,
-      (llu)ident_cksum,
-      (qu)h->event_seq,
+      merge_hex,
+      event_id,
       (qu)h->event_seq,
       h->event_is_open ? "open" : "closed",
       (qd)opened_at,
