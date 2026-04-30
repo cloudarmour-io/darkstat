@@ -31,6 +31,11 @@ struct host {
    int64_t event_opened_mono;
    int64_t event_closed_mono;
    int event_is_open;
+   /* Last packet tuple seen for this host, used by /json output. */
+   uint8_t last_proto;
+   uint16_t last_src_port;
+   uint16_t last_dst_port;
+   int last_tuple_valid;
    struct hashtable *ports_tcp;
    struct hashtable *ports_tcp_remote;
    struct hashtable *ports_udp;

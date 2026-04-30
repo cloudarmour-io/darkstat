@@ -213,6 +213,10 @@ void acct_for(const struct pktsummary * const sm,
       hs->total += sm->len;
       memcpy(hs->u.host.mac_addr, sm->src_mac, sizeof(sm->src_mac));
       hs->u.host.last_seen_mono = now_mono();
+      hs->u.host.last_proto = sm->proto;
+      hs->u.host.last_src_port = sm->src_port;
+      hs->u.host.last_dst_port = sm->dst_port;
+      hs->u.host.last_tuple_valid = 1;
    }
 
    if (!opt_want_local_only || dir_in) {
@@ -220,6 +224,10 @@ void acct_for(const struct pktsummary * const sm,
       hd->in    += sm->len;
       hd->total += sm->len;
       memcpy(hd->u.host.mac_addr, sm->dst_mac, sizeof(sm->dst_mac));
+      hd->u.host.last_proto = sm->proto;
+      hd->u.host.last_src_port = sm->src_port;
+      hd->u.host.last_dst_port = sm->dst_port;
+      hd->u.host.last_tuple_valid = 1;
       /*
        * Don't update recipient's last seen time, we don't know that
        * they received successfully.

@@ -21,6 +21,7 @@
 #include "str.h"
 
 #include <netdb.h>  /* struct addrinfo */
+#include <netinet/in.h> /* IPPROTO_* */
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -236,6 +237,10 @@ make_func_host(const void *key)
    h->event_opened_mono = 0;
    h->event_closed_mono = 0;
    h->event_is_open = 0;
+   h->last_proto = 0;
+   h->last_src_port = 0;
+   h->last_dst_port = 0;
+   h->last_tuple_valid = 0;
    memset(&h->mac_addr, 0, sizeof(h->mac_addr));
    h->ports_tcp = NULL;
    h->ports_tcp_remote = NULL;
@@ -1431,6 +1436,8 @@ text_json_format_host(const struct bucket *b,
    struct text_json_ctx *ctx = (struct text_json_ctx *)user_data;
    struct str *buf = ctx->buf;
    struct host *h = (struct host *)&b->u.host;
+   const char *proto_name;
+   int has_ports;
    const uint64_t merge_cksum = host_merge_checksum(b);
    const uint64_t ident_cksum = host_identity_checksum(b);
    const char *ip = addr_to_str(&(b->u.host.addr));
@@ -1480,6 +1487,36 @@ text_json_format_host(const struct bucket *b,
          b->u.host.mac_addr[3],
          b->u.host.mac_addr[4],
          b->u.host.mac_addr[5]);
+
+   proto_name = h->last_tuple_valid ? getproto(h->last_proto) : "";
+   if (proto_name[0] == '\0')
+      proto_name = "unknown";
+   has_ports = h->last_tuple_valid &&
+      ((h->last_proto == IPPROTO_TCP) || (h->last_proto == IPPROTO_UDP));
+
+   if (h->last_tuple_valid) {
+      str_appendf(buf,
+         "\"protocol\":%u,"
+         "\"protocolName\":\"%s\",",
+         (unsigned int)h->last_proto,
+         proto_name);
+   } else {
+      str_append(buf,
+         "\"protocol\":null,"
+         "\"protocolName\":\"unknown\",");
+   }
+
+   if (has_ports) {
+      str_appendf(buf,
+         "\"srcPort\":%u,"
+         "\"dstPort\":%u,",
+         (unsigned int)h->last_src_port,
+         (unsigned int)h->last_dst_port);
+   } else {
+      str_append(buf,
+         "\"srcPort\":null,"
+         "\"dstPort\":null,");
+   }
 
    str_appendf(buf,
       "\"in\": %qu,"
