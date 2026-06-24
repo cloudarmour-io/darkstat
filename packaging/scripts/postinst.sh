@@ -30,19 +30,18 @@ echo "┌───────────────────────�
 echo "│              darkstat installed                     │"
 echo "└─────────────────────────────────────────────────────┘"
 echo ""
-echo "  Network interface is auto-detected from the default route."
-echo "  To override, edit the config:"
-echo ""
-echo "    sudoedit /etc/default/darkstat"
-echo ""
 if [ -n "${SUGGESTED}" ]; then
-echo "  Detected interface: ${SUGGESTED}"
-echo "  Set:  INTERFACE=${SUGGESTED}"
-echo ""
+  sed -i "s/^INTERFACE=$/INTERFACE=${SUGGESTED}/" /etc/default/darkstat
+  echo "  Interface auto-detected and set: ${SUGGESTED}"
+  echo "  No configuration needed — just start the service:"
+else
+  echo "  Could not auto-detect interface. Edit the config first:"
+  echo ""
+  echo "    sudoedit /etc/default/darkstat   # set INTERFACE=<your interface>"
+  echo ""
+  echo "  Then start the service:"
 fi
-echo "  Then start the service:"
 echo ""
-echo "    sudo systemctl daemon-reload"
 echo "    sudo systemctl start darkstat"
 echo "    sudo systemctl status darkstat"
 echo ""
