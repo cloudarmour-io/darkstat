@@ -39,8 +39,8 @@ make -j$(nproc)
 mkdir -p packaging/dist
 
 # 3. Build packages
-GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
-GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
+VERSION=1.1.0 GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
+VERSION=1.1.0 GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
 ```
 
 ## Build Locally (arm64 cross-compile)
@@ -59,8 +59,8 @@ make -j$(nproc)
 
 # Build packages
 mkdir -p packaging/dist
-GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
-GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
+VERSION=1.1.0 GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
+VERSION=1.1.0 GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
 ```
 
 ## Install & Test
@@ -117,4 +117,10 @@ git push origin v3.0.722
 
 ## Updating the Version
 
-Change `version:` in `packaging/nfpm.yaml`. The CI workflow picks it up automatically.
+Pass `VERSION=x.y.z` at build time:
+
+```bash
+VERSION=1.2.0 GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
+```
+
+In CI, the release workflow sets `VERSION` from the git tag automatically (e.g. tag `v1.2.0` → `VERSION=1.2.0`).
