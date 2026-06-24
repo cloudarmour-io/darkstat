@@ -18,8 +18,12 @@ case "${START_DARKSTAT}" in
 esac
 
 if [ -z "${INTERFACE}" ]; then
-  echo "INTERFACE is empty in /etc/default/darkstat" >&2
-  exit 1
+  INTERFACE=$(ip route show default 2>/dev/null | awk '/^default/ { print $5; exit }')
+  if [ -z "${INTERFACE}" ]; then
+    echo "INTERFACE is empty and no default route found; set INTERFACE in /etc/default/darkstat" >&2
+    exit 1
+  fi
+  echo "INTERFACE not set, auto-detected: ${INTERFACE}" >&2
 fi
 
 set -- /usr/sbin/darkstat --no-daemon --syslog --user darkstat -i "${INTERFACE}" -p "${PORT}"
