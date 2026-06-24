@@ -19,3 +19,5 @@ stylecss.h
 favicon.h
 addr_test
 linktypes_test
+
+packaging/dist/*
