@@ -31,13 +31,17 @@ echo "│              darkstat installed                     │"
 echo "└─────────────────────────────────────────────────────┘"
 echo ""
 if [ -n "${SUGGESTED}" ]; then
-  sed -i "s/^INTERFACE=$/INTERFACE=${SUGGESTED}/" /etc/default/darkstat
+  sed -i "s/^INTERFACES=$/INTERFACES=${SUGGESTED}/" /etc/default/darkstat
   echo "  Interface auto-detected and set: ${SUGGESTED}"
-  echo "  No configuration needed — just start the service:"
+  echo "  To monitor additional interfaces, edit the config:"
+  echo ""
+  echo "    sudoedit /etc/default/darkstat   # e.g. INTERFACES=\"eth0 eth1\""
+  echo ""
+  echo "  Then start the service:"
 else
   echo "  Could not auto-detect interface. Edit the config first:"
   echo ""
-  echo "    sudoedit /etc/default/darkstat   # set INTERFACE=<your interface>"
+  echo "    sudoedit /etc/default/darkstat   # set INTERFACES=\"eth0 eth1\""
   echo ""
   echo "  Then start the service:"
 fi
