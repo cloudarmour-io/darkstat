@@ -438,6 +438,7 @@ main(int argc, char **argv)
 
       timer_start(&t);
       now_update();
+      hosts_db_reduce();
 
       if (export_pending) {
          if (export_fn != NULL)

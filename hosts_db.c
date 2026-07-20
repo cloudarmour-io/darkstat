@@ -78,7 +78,11 @@ struct hashtable {
 };
 
 static void hashtable_reduce(struct hashtable *ht);
+static void hashtable_reap_stale(struct hashtable *ht);
 static void hashtable_free(struct hashtable *h);
+
+/* Keep host records in RAM for at most one week unless they are still active. */
+#define HOST_RETENTION_SECS (7ULL * 24ULL * 60ULL * 60ULL)
 
 #define HOST_BITS 1  /* initial size of hosts table */
 #define PORT_BITS 1  /* initial size of ports tables */
@@ -741,14 +745,13 @@ hashtable_reduce(struct hashtable *ht)
    cutoff = table[ht->count_keep]->total;
    free(table);
 
-   /* Remove all elements with total <= cutoff. */
+   /* Remove the lowest-traffic entries to get back under the keep threshold. */
    rmd = 0;
    for (i=0; i<ht->size; i++) {
       struct bucket *last = NULL, *next, *b = ht->table[i];
       while (b != NULL) {
          next = b->next;
          if (b->total <= cutoff) {
-            /* Remove this one. */
             ht->free_func(b);
             free(b);
             if (last == NULL)
@@ -766,9 +769,38 @@ hashtable_reduce(struct hashtable *ht)
    hashtable_rehash(ht, ht->bits); /* is this needed? */
 }
 
+static void
+hashtable_reap_stale(struct hashtable *ht)
+{
+   uint32_t i;
+   const int64_t now = (int64_t)now_mono();
+   const int64_t stale_before = now - (int64_t)HOST_RETENTION_SECS;
+
+   for (i = 0; i < ht->size; i++) {
+      struct bucket *last = NULL, *next, *b = ht->table[i];
+      while (b != NULL) {
+         next = b->next;
+         if ((b->u.host.last_seen_mono != 0) &&
+             (b->u.host.last_seen_mono <= stale_before)) {
+            ht->free_func(b);
+            free(b);
+            if (last == NULL)
+               ht->table[i] = next;
+            else
+               last->next = next;
+            ht->count--;
+         } else {
+            last = b;
+         }
+         b = next;
+      }
+   }
+}
+
 /* Reduce hosts_db if needed. */
 void hosts_db_reduce(void)
 {
+   hashtable_reap_stale(hosts_db);
    if (hosts_db->count >= hosts_db->count_max)
       hashtable_reduce(hosts_db);
 }

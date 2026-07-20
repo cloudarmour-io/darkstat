@@ -314,6 +314,8 @@ The number of
 .BI \-\-hosts\-max
 must be greater than
 .BI \-\-hosts\-keep
+.
+Hosts that have not been seen for 7 days are also removed automatically.
 .\"
 .TP
 .BI \-\-hosts\-keep " count"
@@ -323,6 +325,10 @@ and traffic is seen from a new host, we clean out the hosts table,
 keeping only the top
 .BI \-\-hosts\-keep
 number of hosts, sorted by total traffic.
+This is a safety cap; stale hosts are still removed after 7 days even if
+the table never reaches
+.BI \-\-hosts\-max
+.
 .\"
 .TP
 .BI \-\-ports\-max " count"
