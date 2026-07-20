@@ -1,0 +1,136 @@
+name: Build & Package
+
+on:
+  push:
+    branches: [master, "nitin/*"]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            cc: gcc
+            host_triple: x86_64-linux-gnu
+            nfpm_arch: amd64
+          - arch: arm64
+            cc: aarch64-linux-gnu-gcc
+            host_triple: aarch64-linux-gnu
+            nfpm_arch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            autoconf automake \
+            libpcap-dev zlib1g-dev \
+            ${{ matrix.arch == 'arm64' && 'gcc-aarch64-linux-gnu libpcap-dev:arm64 zlib1g-dev:arm64' || '' }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Enable arm64 foreign arch (for cross deps)
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update -qq
+          sudo apt-get install -y libpcap-dev:arm64 zlib1g-dev:arm64
+
+      - name: Configure & build
+        run: |
+          autoreconf -fi
+          ./configure \
+            --host=${{ matrix.host_triple }} \
+            --prefix=/usr \
+            --sbindir=/usr/sbin \
+            --mandir=/usr/share/man \
+            --with-privdrop-user=darkstat \
+            CC=${{ matrix.cc }}
+          make -j$(nproc)
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: darkstat-${{ matrix.arch }}
+          path: darkstat
+
+  package:
+    name: Package (${{ matrix.arch }}, ${{ matrix.format }})
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        format: [deb, rpm]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: darkstat-${{ matrix.arch }}
+          path: .
+
+      - name: Make binary executable
+        run: chmod +x darkstat
+
+      - name: Install nfpm
+        run: |
+          curl -sSfL https://github.com/goreleaser/nfpm/releases/latest/download/nfpm_amd64.deb -o nfpm.deb
+          sudo dpkg -i nfpm.deb
+
+      - name: Set version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=1.1.0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build package
+        run: |
+          chmod +x packaging/scripts/*.sh
+          nfpm package \
+            --config packaging/nfpm.yaml \
+            --packager ${{ matrix.format }} \
+            --target packaging/dist/
+        env:
+          GOARCH: ${{ matrix.arch }}
+          VERSION: ${{ steps.version.outputs.value }}
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: darkstat-${{ matrix.arch }}.${{ matrix.format }}
+          path: packaging/dist/*.${{ matrix.format }}
+
+  release:
+    name: Release
+    needs: package
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: darkstat-*.*
+          merge-multiple: true
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

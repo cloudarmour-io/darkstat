@@ -1,0 +1,67 @@
+name: darkstat
+arch: "${GOARCH}"
+platform: linux
+version: "${VERSION}"
+release: "1"
+section: net
+priority: optional
+maintainer: CloudArmour Packaging Team <opensource@cloudarmour.io>
+description: |
+  Lightweight real-time network traffic monitor with web UI.
+  darkstat sniffs packets on a chosen network interface, accumulates traffic
+  statistics (hosts, ports, protocols, graphs), and serves them over HTTP.
+  This build includes JSON export support at /json for monitoring integrations.
+vendor: CloudArmour
+homepage: https://unix4lyfe.org/darkstat/
+license: GPL-2.0
+
+overrides:
+  deb:
+    depends:
+      - libpcap0.8 | libpcap
+      - zlib1g
+      - adduser
+  rpm:
+    depends:
+      - libpcap
+      - zlib
+
+contents:
+  # Main binary
+  - src: darkstat
+    dst: /usr/sbin/darkstat
+    file_info:
+      mode: 0755
+
+  # Wrapper script
+  - src: debian/darkstat-wrapper
+    dst: /usr/lib/darkstat/darkstat-wrapper
+    file_info:
+      mode: 0755
+
+  - src: debian/darkstat.service
+    dst: /usr/lib/systemd/system/darkstat.service
+
+  # Default config
+  - src: debian/darkstat.default
+    dst: /etc/default/darkstat
+    type: config|noreplace
+
+  # Man page
+  - src: darkstat.8
+    dst: /usr/share/man/man8/darkstat.8
+    file_info:
+      mode: 0644
+
+  # State directory
+  - dst: /var/lib/darkstat
+    type: dir
+    file_info:
+      mode: 0750
+      owner: darkstat
+      group: darkstat
+
+scripts:
+  postinstall: packaging/scripts/postinst.sh
+  preremove: packaging/scripts/prerm.sh
+  postremove: packaging/scripts/postrm.sh

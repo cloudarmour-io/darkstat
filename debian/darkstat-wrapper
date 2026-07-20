@@ -2,7 +2,7 @@
 set -eu
 
 : "${START_DARKSTAT:=true}"
-: "${INTERFACE:=}"
+: "${INTERFACES:=}"
 : "${PORT:=667}"
 : "${BINDADDR:=}"
 : "${BASE_PATH:=/}"
@@ -17,12 +17,22 @@ case "${START_DARKSTAT}" in
     ;;
 esac
 
-if [ -z "${INTERFACE}" ]; then
-  echo "INTERFACE is empty in /etc/default/darkstat" >&2
-  exit 1
+if [ -z "${INTERFACES}" ]; then
+  INTERFACES=$(ip route show default 2>/dev/null | awk '/^default/ { print $5; exit }')
+  if [ -z "${INTERFACES}" ]; then
+    echo "INTERFACES is empty and no default route found; set INTERFACES in /etc/default/darkstat" >&2
+    exit 1
+  fi
+  echo "INTERFACES not set, auto-detected: ${INTERFACES}" >&2
 fi
 
-set -- /usr/sbin/darkstat --no-daemon --syslog --user darkstat -i "${INTERFACE}" -p "${PORT}"
+set -- /usr/sbin/darkstat --no-daemon --syslog --user darkstat
+
+for iface in ${INTERFACES}; do
+  set -- "$@" -i "${iface}"
+done
+
+set -- "$@" -p "${PORT}"
 
 if [ -n "${BINDADDR}" ]; then
   set -- "$@" -b "${BINDADDR}"
