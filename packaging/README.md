@@ -27,6 +27,22 @@ nfpm package (reads packaging/nfpm.yaml)
 
 The `$GOARCH` environment variable controls the target architecture label embedded in the package metadata. It does not cross-compile — you must build the binary for the target arch separately.
 
+## One-Command Packaging
+
+From the repository root, you can build both `amd64` and `arm64` packages with a single command:
+
+```bash
+./package -v 1.1.0
+```
+
+This will:
+
+1. Build the native `amd64` binary and package it as `.deb` and `.rpm`
+2. Cross-compile the `arm64` binary and package it as `.deb` and `.rpm`
+3. Write all outputs to `packaging/dist/`
+
+Use `-v` or `--version` to set the package version used by `nfpm`.
+
 ## Build Locally (amd64)
 
 ```bash
