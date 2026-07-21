@@ -26,6 +26,7 @@ extern unsigned int opt_hosts_max;
 extern unsigned int opt_hosts_keep;
 extern unsigned int opt_ports_max;
 extern unsigned int opt_ports_keep;
+extern unsigned int opt_host_retention_days;
 
 /* Hosts output options. */
 extern int opt_want_lastseen;

@@ -161,6 +161,10 @@ unsigned int opt_ports_keep = 30;
 static void cb_ports_keep(const char *arg)
 { opt_ports_keep = parsenum(arg, 65536); }
 
+unsigned int opt_host_retention_days = 7;
+static void cb_host_retention_days(const char *arg)
+{ opt_host_retention_days = parsenum(arg, 3650); }
+
 unsigned int opt_highest_port = 65535;
 static void cb_highest_port(const char *arg)
 { opt_highest_port = parsenum(arg, 65535); }
@@ -215,6 +219,7 @@ static struct cmdline_arg cmdline_args[] = {
    {"--hosts-keep",   "count",           cb_hosts_keep,   0},
    {"--ports-max",    "count",           cb_ports_max,    0},
    {"--ports-keep",   "count",           cb_ports_keep,   0},
+   {"--host-retention-days", "days",      cb_host_retention_days, 0},
    {"--highest-port", "port",            cb_highest_port, 0},
    {"--wait",         "secs",            cb_wait_secs,    0},
    {"--hexdump",      NULL,              cb_hexdump,      0},

@@ -81,9 +81,6 @@ static void hashtable_reduce(struct hashtable *ht);
 static void hashtable_reap_stale(struct hashtable *ht);
 static void hashtable_free(struct hashtable *h);
 
-/* Keep host records in RAM for at most one week unless they are still active. */
-#define HOST_RETENTION_SECS (7ULL * 24ULL * 60ULL * 60ULL)
-
 #define HOST_BITS 1  /* initial size of hosts table */
 #define PORT_BITS 1  /* initial size of ports tables */
 #define PROTO_BITS 1 /* initial size of proto table */
@@ -774,7 +771,8 @@ hashtable_reap_stale(struct hashtable *ht)
 {
    uint32_t i;
    const int64_t now = (int64_t)now_mono();
-   const int64_t stale_before = now - (int64_t)HOST_RETENTION_SECS;
+   const int64_t stale_before =
+      now - ((int64_t)opt_host_retention_days * 24 * 60 * 60);
 
    for (i = 0; i < ht->size; i++) {
       struct bucket *last = NULL, *next, *b = ht->table[i];

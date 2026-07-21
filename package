@@ -65,7 +65,7 @@ build_arm64() {
   make clean
   ./configure --host=aarch64-linux-gnu --prefix=/usr --sbindir=/usr/sbin \
     --with-privdrop-user=darkstat CC=aarch64-linux-gnu-gcc
-  make -j"$(nproc)"
+  make -j"$(nproc)" HOSTCC=gcc HOSTCFLAGS=
   VERSION="$version" GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
   VERSION="$version" GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
 }
