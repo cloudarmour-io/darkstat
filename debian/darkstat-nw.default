@@ -8,6 +8,7 @@
 # Set HOST_RETENTION_HOURS to control how long inactive host records stay in RAM.
 # The default is 168 hours (7 days).
 # Adjust these to tune in-memory table sizes.
+# Set MEM_LIMIT_MB to your target memory cap for the darkstat-nw wrapper.
 
 START_DARKSTAT=true
 INTERFACES=
@@ -20,6 +21,7 @@ PORTS_MAX=60
 PORTS_KEEP=30
 HIGHEST_PORT=65535
 HOST_RETENTION_HOURS=1
+MEM_LIMIT_MB=0
 
 # Extra darkstat CLI flags appended as-is.
 # Examples:

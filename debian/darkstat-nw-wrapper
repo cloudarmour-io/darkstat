@@ -12,6 +12,7 @@ set -eu
 : "${PORTS_KEEP:=30}"
 : "${HIGHEST_PORT:=65535}"
 : "${HOST_RETENTION_HOURS:=168}"
+: "${MEM_LIMIT_MB:=0}"
 : "${EXTRA_OPTS:=}"
 
 case "${START_DARKSTAT}" in
@@ -70,6 +71,10 @@ fi
 
 if [ -n "${HOST_RETENTION_HOURS}" ]; then
   set -- "$@" --host-retention-hours "${HOST_RETENTION_HOURS}"
+fi
+
+if [ -n "${MEM_LIMIT_MB}" ] && [ "${MEM_LIMIT_MB}" != "0" ]; then
+  set -- "$@" --mem-limit-mb "${MEM_LIMIT_MB}"
 fi
 
 if [ -n "${EXTRA_OPTS}" ]; then

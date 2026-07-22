@@ -118,6 +118,7 @@ PORTS_MAX=60
 PORTS_KEEP=30
 HIGHEST_PORT=65535
 HOST_RETENTION_HOURS=168
+MEM_LIMIT_MB=0
 EXTRA_OPTS=
 ```
 
@@ -131,6 +132,7 @@ These variables map to the existing darkstat options:
 - `PORTS_KEEP` -> `--ports-keep`
 - `HIGHEST_PORT` -> `--highest-port`
 - `HOST_RETENTION_HOURS` -> `--host-retention-hours`
+- `MEM_LIMIT_MB` -> `--mem-limit-mb`
 
 ## CI / Automated Builds
 
