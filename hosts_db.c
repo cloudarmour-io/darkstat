@@ -99,22 +99,6 @@ static uint32_t coprime(const uint32_t u) {
    return ( (uint32_t)( (double)(u) * phi_1 ) | 1U );
 }
 
-static int
-cmp_host_last_seen_oldest_first_qsort(const void *a, const void *b)
-{
-   const struct bucket *const *x = a;
-   const struct bucket *const *y = b;
-   const int64_t xa = (*x)->u.host.last_seen_mono;
-   const int64_t ya = (*y)->u.host.last_seen_mono;
-
-   /* Treat never-seen hosts as the oldest entries. */
-   if (xa == 0 && ya != 0) return 1;
-   if (xa != 0 && ya == 0) return -1;
-   if (xa < ya) return 1;
-   if (xa > ya) return -1;
-   return 0;
-}
-
 static uint64_t hashtable_estimate_bytes(const struct hashtable *ht,
                                          const int recurse_hosts);
 
@@ -844,60 +828,88 @@ hashtable_reduce(struct hashtable *ht)
    hashtable_rehash(ht, ht->bits); /* is this needed? */
 }
 
-static void
-hashtable_remove_oldest(struct hashtable *ht, uint32_t remove_count)
+/*
+ * A bucket together with the address of the pointer that references it
+ * from its hash chain (either a `ht->table[slot]` slot or a previous
+ * bucket's `next` field). Building this alongside the sort lets removal
+ * unlink a chosen bucket directly, in O(1), without re-scanning its chain.
+ */
+struct bucket_ref {
+   struct bucket *b;
+   struct bucket **link;
+};
+
+static int
+cmp_bucket_ref_last_seen_oldest_first_qsort(const void *a, const void *b)
 {
-   uint32_t i, pos, rmd;
-   const struct bucket **table;
+   const struct bucket_ref *x = a;
+   const struct bucket_ref *y = b;
+   const int64_t xa = x->b->u.host.last_seen_mono;
+   const int64_t ya = y->b->u.host.last_seen_mono;
+
+   if (xa == 0 && ya != 0) return 1;
+   if (xa != 0 && ya == 0) return -1;
+   if (xa < ya) return 1;
+   if (xa > ya) return -1;
+   return 0;
+}
+
+/*
+ * Builds a sorted-oldest-first snapshot of every host bucket in ht, along
+ * with each bucket's chain-link address so callers can unlink any subset
+ * of the result directly. The returned array has ht->count entries; the
+ * caller owns it and must free() it.
+ */
+static struct bucket_ref *
+hashtable_snapshot_hosts_oldest_first(struct hashtable *ht)
+{
+   struct bucket_ref *refs;
+   uint32_t i, pos;
+
+   refs = xcalloc(ht->count, sizeof(*refs));
+   for (pos = 0, i = 0; i < ht->size; i++) {
+      struct bucket **link = &ht->table[i];
+      struct bucket *b = *link;
+      while (b != NULL) {
+         refs[pos].b = b;
+         refs[pos].link = link;
+         pos++;
+         link = &b->next;
+         b = b->next;
+      }
+   }
+   assert(pos == ht->count);
+   qsort(refs, ht->count, sizeof(*refs), cmp_bucket_ref_last_seen_oldest_first_qsort);
+   return refs;
+}
+
+/*
+ * Removes the oldest `remove_count` hosts from ht, using a snapshot
+ * previously built by hashtable_snapshot_hosts_oldest_first(ht). Because
+ * the snapshot is sorted oldest-first and carries each bucket's chain
+ * link, each removal is an O(1) unlink -- no re-scanning of ht is needed.
+ */
+static void
+hashtable_remove_oldest(struct hashtable *ht, struct bucket_ref *sorted_refs,
+                         uint32_t remove_count)
+{
+   uint32_t i, rmd = 0;
 
    if (remove_count == 0 || ht->count == 0)
       return;
    if (remove_count > ht->count)
       remove_count = ht->count;
 
-   table = xcalloc(ht->count, sizeof(*table));
-   for (pos = 0, i = 0; i < ht->size; i++) {
-      struct bucket *b = ht->table[i];
-      while (b != NULL) {
-         table[pos++] = b;
-         b = b->next;
-      }
-   }
-   assert(pos == ht->count);
-   qsort(table, ht->count, sizeof(*table), cmp_host_last_seen_oldest_first_qsort);
+   for (i = 0; i < remove_count; i++) {
+      struct bucket *b = sorted_refs[i].b;
 
-   rmd = 0;
-   for (i = 0; i < ht->size; i++) {
-      struct bucket *last = NULL, *next, *b = ht->table[i];
-      while (b != NULL) {
-         int remove = 0;
-         uint32_t j;
-
-         for (j = 0; j < remove_count; j++) {
-            if (b == table[j]) {
-               remove = 1;
-               break;
-            }
-         }
-
-         next = b->next;
-         if (remove) {
-            ht->free_func(b);
-            free(b);
-            if (last == NULL)
-               ht->table[i] = next;
-            else
-               last->next = next;
-            rmd++;
-            ht->count--;
-         } else {
-            last = b;
-         }
-         b = next;
-      }
+      *sorted_refs[i].link = b->next;
+      ht->free_func(b);
+      free(b);
+      ht->count--;
+      rmd++;
    }
 
-   free(table);
    hashtable_rehash(ht, ht->bits);
    verbosef("memory cap: removed %u oldest hosts", rmd);
 }
@@ -922,7 +934,7 @@ hashtable_reduce_for_memory(struct hashtable *ht)
    const uint64_t limit_bytes = (uint64_t)opt_mem_limit_mb * 1024ULL * 1024ULL;
    uint64_t estimate;
    uint32_t i, remove_count;
-   const struct bucket **table;
+   struct bucket_ref *refs;
 
    if (limit_bytes == 0)
       return;
@@ -932,38 +944,36 @@ hashtable_reduce_for_memory(struct hashtable *ht)
       return;
 
    while (estimate > limit_bytes && ht->count > 0) {
-      table = xcalloc(ht->count, sizeof(*table));
-      for (i = 0, remove_count = 0; i < ht->size; i++) {
-         struct bucket *b = ht->table[i];
-         while (b != NULL) {
-            table[remove_count++] = b;
-            b = b->next;
-         }
-      }
-      qsort(table, ht->count, sizeof(*table), cmp_host_last_seen_oldest_first_qsort);
+      /* One snapshot per pass, reused for both child-table eviction and
+       * whole-host removal below -- avoids sorting the bucket list twice
+       * per pass. */
+      refs = hashtable_snapshot_hosts_oldest_first(ht);
 
       for (i = 0; i < ht->count && estimate > limit_bytes; i++) {
-         struct bucket *host = (struct bucket *)table[i];
-         uint64_t freed;
+         uint64_t freed = host_evict_child_tables(refs[i].b);
 
-         freed = host_evict_child_tables(host);
-         if (freed == 0) {
+         if (freed == 0)
             continue;
-         }
          estimate -= MIN(estimate, freed);
       }
 
       if (estimate <= limit_bytes) {
-         free(table);
+         free(refs);
          break;
       }
 
       remove_count = ht->count / 10;
       if (remove_count == 0)
          remove_count = 1;
-      hashtable_remove_oldest(ht, remove_count);
-      free(table);
+      hashtable_remove_oldest(ht, refs, remove_count);
+      free(refs);
       estimate = hashtable_estimate_bytes(ht, 1);
+   }
+
+   if (estimate > limit_bytes && ht->count == 0) {
+      warnx("memory cap: MEM_LIMIT_MB=%u is too low even for an empty "
+            "hosts table; all hosts were evicted and the limit is still "
+            "exceeded", opt_mem_limit_mb);
    }
 }
 

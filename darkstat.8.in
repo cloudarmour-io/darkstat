@@ -68,6 +68,10 @@ darkstat \- network statistics gatherer
 ] [
 .BI \-\-highest\-port " port"
 ] [
+.BI \-\-host\-retention\-hours " hours"
+] [
+.BI \-\-mem\-limit\-mb " mb"
+] [
 .BI \-\-wait " secs"
 ] [
 .BI \-\-hexdump
@@ -351,6 +355,22 @@ per-host ports tables, although their traffic will still be accounted
 for.
 This can be used to hide ephemeral ports.
 By default, all ports are tracked.
+.\"
+.TP
+.BI \-\-host\-retention\-hours " hours"
+Host records that have been inactive for longer than this many hours
+are removed from memory.
+The default is 168 hours (7 days).
+.\"
+.TP
+.BI \-\-mem\-limit\-mb " mb"
+An approximate memory budget, in megabytes, for the in-memory hosts
+table.
+When the estimated size of the table exceeds this limit, per-host
+port and protocol detail tables are discarded first; if that is not
+enough, the oldest hosts are evicted entirely until the table is back
+under budget.
+A value of 0 (the default) disables this limit.
 .\"
 .TP
 .BI \-\-wait " secs"
