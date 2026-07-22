@@ -6,6 +6,11 @@ set -eu
 : "${PORT:=667}"
 : "${BINDADDR:=}"
 : "${BASE_PATH:=/}"
+: "${HOSTS_MAX:=1000}"
+: "${HOSTS_KEEP:=500}"
+: "${PORTS_MAX:=60}"
+: "${PORTS_KEEP:=30}"
+: "${HIGHEST_PORT:=65535}"
 : "${HOST_RETENTION_HOURS:=168}"
 : "${EXTRA_OPTS:=}"
 
@@ -21,13 +26,13 @@ esac
 if [ -z "${INTERFACES}" ]; then
   INTERFACES=$(ip route show default 2>/dev/null | awk '/^default/ { print $5; exit }')
   if [ -z "${INTERFACES}" ]; then
-    echo "INTERFACES is empty and no default route found; set INTERFACES in /etc/default/darkstat" >&2
+    echo "INTERFACES is empty and no default route found; set INTERFACES in /etc/default/darkstat-nw" >&2
     exit 1
   fi
   echo "INTERFACES not set, auto-detected: ${INTERFACES}" >&2
 fi
 
-set -- /usr/sbin/darkstat --no-daemon --syslog --user darkstat
+set -- /usr/sbin/darkstat --no-daemon --syslog --user darkstat-nw
 
 for iface in ${INTERFACES}; do
   set -- "$@" -i "${iface}"
@@ -41,6 +46,26 @@ fi
 
 if [ -n "${BASE_PATH}" ]; then
   set -- "$@" --base "${BASE_PATH}"
+fi
+
+if [ -n "${HOSTS_MAX}" ]; then
+  set -- "$@" --hosts-max "${HOSTS_MAX}"
+fi
+
+if [ -n "${HOSTS_KEEP}" ]; then
+  set -- "$@" --hosts-keep "${HOSTS_KEEP}"
+fi
+
+if [ -n "${PORTS_MAX}" ]; then
+  set -- "$@" --ports-max "${PORTS_MAX}"
+fi
+
+if [ -n "${PORTS_KEEP}" ]; then
+  set -- "$@" --ports-keep "${PORTS_KEEP}"
+fi
+
+if [ -n "${HIGHEST_PORT}" ]; then
+  set -- "$@" --highest-port "${HIGHEST_PORT}"
 fi
 
 if [ -n "${HOST_RETENTION_HOURS}" ]; then

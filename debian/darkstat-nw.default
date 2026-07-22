@@ -1,4 +1,4 @@
-# /etc/default/darkstat
+# /etc/default/darkstat-nw
 # Set START_DARKSTAT=true to allow service start.
 # Set INTERFACES to a space-separated list of interfaces to monitor.
 # Examples:
@@ -7,12 +7,18 @@
 # Leave blank to auto-detect from the default route.
 # Set HOST_RETENTION_HOURS to control how long inactive host records stay in RAM.
 # The default is 168 hours (7 days).
+# Adjust these to tune in-memory table sizes.
 
 START_DARKSTAT=true
 INTERFACES=
-PORT=667
+PORT=1667
 BINDADDR=
 BASE_PATH=/
+HOSTS_MAX=1000
+HOSTS_KEEP=500
+PORTS_MAX=60
+PORTS_KEEP=30
+HIGHEST_PORT=65535
 HOST_RETENTION_HOURS=1
 
 # Extra darkstat CLI flags appended as-is.

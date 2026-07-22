@@ -1,13 +1,13 @@
 [Unit]
-Description=darkstat network traffic monitor
+Description=darkstat-nw network traffic monitor
 Documentation=man:darkstat(8)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=-/etc/default/darkstat
-ExecStart=/usr/lib/darkstat/darkstat-wrapper
+EnvironmentFile=-/etc/default/darkstat-nw
+ExecStart=/usr/lib/darkstat-nw/darkstat-nw-wrapper
 Restart=always
 RestartSec=5s
 
