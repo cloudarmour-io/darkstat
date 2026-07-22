@@ -173,6 +173,15 @@ unsigned int opt_mem_limit_mb = 0;
 static void cb_mem_limit_mb(const char *arg)
 { opt_mem_limit_mb = parsenum(arg, 0); }
 
+char *opt_api_key_md5 = NULL;
+static void cb_api_key_md5(const char *arg)
+{
+   free(opt_api_key_md5);
+   opt_api_key_md5 = strdup(arg);
+   if (opt_api_key_md5 == NULL)
+      err(1, "strdup");
+}
+
 int opt_wait_secs = -1;
 static void cb_wait_secs(const char *arg)
 { opt_wait_secs = (int)parsenum(arg, 0); }
@@ -229,6 +238,7 @@ static struct cmdline_arg cmdline_args[] = {
    {"--host-retention-hours", "hours",     cb_host_retention_hours, 0},
    {"--highest-port", "port",            cb_highest_port, 0},
    {"--mem-limit-mb", "mb",              cb_mem_limit_mb, 0},
+   {"--api-key-md5",  "md5hex",          cb_api_key_md5,  0},
    {"--test-reduce",  NULL,              cb_test_reduce,  0},
    {"--wait",         "secs",            cb_wait_secs,    0},
    {"--hexdump",      NULL,              cb_hexdump,      0},

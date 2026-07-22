@@ -13,6 +13,7 @@ set -eu
 : "${HIGHEST_PORT:=65535}"
 : "${HOST_RETENTION_HOURS:=168}"
 : "${MEM_LIMIT_MB:=0}"
+: "${API_KEY:=}"
 : "${EXTRA_OPTS:=}"
 
 case "${START_DARKSTAT}" in
@@ -75,6 +76,10 @@ fi
 
 if [ -n "${MEM_LIMIT_MB}" ] && [ "${MEM_LIMIT_MB}" != "0" ]; then
   set -- "$@" --mem-limit-mb "${MEM_LIMIT_MB}"
+fi
+
+if [ -n "${API_KEY}" ]; then
+  set -- "$@" --api-key-md5 "${API_KEY}"
 fi
 
 if [ -n "${EXTRA_OPTS}" ]; then

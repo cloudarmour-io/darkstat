@@ -173,6 +173,16 @@ The default is 667.
 .BI \-b " bindaddr"
 Bind the web interface to the specified address.
 The default is to listen on all interfaces.
+If \fIdarkstat\fR is bound only to \fB127.0.0.1\fR or \fB::1\fR,
+the web interface does not require authentication.
+If it is bound to any other address, requests must present a valid API key.
+.\"
+.TP
+.BI \-\-api\-key\-md5 " md5hex"
+Set the API key hash used to authenticate requests when the web interface
+is exposed on a non-loopback address.
+The client should send the plain password; \fIdarkstat\fR hashes it with MD5
+and compares the result against this value.
 .\"
 .TP
 .BI \-\-base " path"

@@ -19,6 +19,7 @@ extern int opt_want_syslog;
 extern unsigned int opt_highest_port;
 extern int opt_want_local_only;
 extern unsigned int opt_mem_limit_mb;
+extern char *opt_api_key_md5;
 
 /* Hosts table reduction - when the number of entries is about to exceed
  * <max>, we reduce the table to the top <keep> entries.

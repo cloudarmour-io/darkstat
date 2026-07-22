@@ -9,6 +9,8 @@
 # The default is 168 hours (7 days).
 # Adjust these to tune in-memory table sizes.
 # Set MEM_LIMIT_MB to your target memory cap for the darkstat-nw wrapper.
+# Set API_KEY to the MD5 hash of the API password. Leave blank to disable auth
+# when binding only to localhost.
 
 START_DARKSTAT=true
 INTERFACES=
@@ -22,6 +24,7 @@ PORTS_KEEP=30
 HIGHEST_PORT=65535
 HOST_RETENTION_HOURS=1
 MEM_LIMIT_MB=256
+API_KEY=
 
 # Extra darkstat CLI flags appended as-is.
 # Examples:

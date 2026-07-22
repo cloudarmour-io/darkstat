@@ -119,6 +119,7 @@ PORTS_KEEP=30
 HIGHEST_PORT=65535
 HOST_RETENTION_HOURS=168
 MEM_LIMIT_MB=0
+API_KEY=
 EXTRA_OPTS=
 ```
 
@@ -133,6 +134,14 @@ These variables map to the existing darkstat options:
 - `HIGHEST_PORT` -> `--highest-port`
 - `HOST_RETENTION_HOURS` -> `--host-retention-hours`
 - `MEM_LIMIT_MB` -> `--mem-limit-mb`
+- `API_KEY` -> `--api-key-md5`
+
+Auth behavior:
+
+- If darkstat only binds to `127.0.0.1` or `::1`, the web UI does not require auth.
+- If darkstat binds to any other address, the web UI requires an API key.
+- `API_KEY` must contain the MD5 hash of the password. The browser/client sends the
+  plain password, darkstat hashes it with MD5, and compares the result to `API_KEY`.
 
 ## CI / Automated Builds
 
