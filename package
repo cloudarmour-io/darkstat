@@ -50,6 +50,9 @@ fi
 
 mkdir -p packaging/dist
 
+sed -i.bak -E "s/^(AC_INIT\(\[darkstat\],\[)[^]]*(\].*)/\1${version}\2/" configure.ac
+rm -f configure.ac.bak
+
 build_amd64() {
   echo "==> Building amd64"
   make clean
