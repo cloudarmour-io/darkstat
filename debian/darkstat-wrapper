@@ -6,7 +6,7 @@ set -eu
 : "${PORT:=667}"
 : "${BINDADDR:=}"
 : "${BASE_PATH:=/}"
-: "${HOST_RETENTION_DAYS:=7}"
+: "${HOST_RETENTION_HOURS:=168}"
 : "${EXTRA_OPTS:=}"
 
 case "${START_DARKSTAT}" in
@@ -43,8 +43,8 @@ if [ -n "${BASE_PATH}" ]; then
   set -- "$@" --base "${BASE_PATH}"
 fi
 
-if [ -n "${HOST_RETENTION_DAYS}" ]; then
-  set -- "$@" --host-retention-days "${HOST_RETENTION_DAYS}"
+if [ -n "${HOST_RETENTION_HOURS}" ]; then
+  set -- "$@" --host-retention-hours "${HOST_RETENTION_HOURS}"
 fi
 
 if [ -n "${EXTRA_OPTS}" ]; then

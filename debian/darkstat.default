@@ -5,15 +5,15 @@
 #   INTERFACES="eth0"
 #   INTERFACES="eth0 eth1"
 # Leave blank to auto-detect from the default route.
-# Set HOST_RETENTION_DAYS to control how long inactive host records stay in RAM.
-# The default is 7 days.
+# Set HOST_RETENTION_HOURS to control how long inactive host records stay in RAM.
+# The default is 168 hours (7 days).
 
 START_DARKSTAT=true
 INTERFACES=
 PORT=667
 BINDADDR=
 BASE_PATH=/
-HOST_RETENTION_DAYS=7
+HOST_RETENTION_HOURS=1
 
 # Extra darkstat CLI flags appended as-is.
 # Examples:
