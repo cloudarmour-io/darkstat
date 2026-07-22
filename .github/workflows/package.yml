@@ -32,7 +32,7 @@ jobs:
           sudo apt-get install -y \
             autoconf automake \
             libpcap-dev zlib1g-dev \
-            ${{ matrix.arch == 'arm64' && 'gcc-aarch64-linux-gnu libpcap-dev:arm64 zlib1g-dev:arm64' || '' }}
+            ${{ matrix.arch == 'arm64' && 'gcc-aarch64-linux-gnu' || '' }}
         env:
           DEBIAN_FRONTEND: noninteractive
 
