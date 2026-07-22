@@ -26,6 +26,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h> /* memset(), strcmp() */
 #include <time.h>
@@ -79,6 +80,7 @@ struct hashtable {
 
 static void hashtable_reduce(struct hashtable *ht);
 static void hashtable_reap_stale(struct hashtable *ht);
+static void hashtable_reduce_for_memory(struct hashtable *ht);
 static void hashtable_free(struct hashtable *h);
 
 #define HOST_BITS 1  /* initial size of hosts table */
@@ -95,6 +97,82 @@ static const double phi_1 =
 /* Co-prime of u, using phi^-1 */
 static uint32_t coprime(const uint32_t u) {
    return ( (uint32_t)( (double)(u) * phi_1 ) | 1U );
+}
+
+static int
+cmp_host_last_seen_oldest_first_qsort(const void *a, const void *b)
+{
+   const struct bucket *const *x = a;
+   const struct bucket *const *y = b;
+   const int64_t xa = (*x)->u.host.last_seen_mono;
+   const int64_t ya = (*y)->u.host.last_seen_mono;
+
+   /* Treat never-seen hosts as the oldest entries. */
+   if (xa == 0 && ya != 0) return 1;
+   if (xa != 0 && ya == 0) return -1;
+   if (xa < ya) return 1;
+   if (xa > ya) return -1;
+   return 0;
+}
+
+static uint64_t hashtable_estimate_bytes(const struct hashtable *ht,
+                                         const int recurse_hosts);
+
+static uint64_t
+bucket_estimate_bytes(const struct bucket *b)
+{
+   uint64_t bytes = sizeof(*b);
+
+   if (b == NULL)
+      return 0;
+
+   if (b->u.host.dns != NULL)
+      bytes += (uint64_t)strlen(b->u.host.dns) + 1ULL;
+   bytes += hashtable_estimate_bytes(b->u.host.ports_tcp, 0);
+   bytes += hashtable_estimate_bytes(b->u.host.ports_tcp_remote, 0);
+   bytes += hashtable_estimate_bytes(b->u.host.ports_udp, 0);
+   bytes += hashtable_estimate_bytes(b->u.host.ports_udp_remote, 0);
+   bytes += hashtable_estimate_bytes(b->u.host.ip_protos, 0);
+
+   return bytes;
+}
+
+static uint64_t
+hashtable_estimate_bytes(const struct hashtable *ht,
+                         const int recurse_hosts)
+{
+   uint32_t i;
+   uint64_t bytes;
+
+   if (ht == NULL)
+      return 0;
+
+   bytes = sizeof(*ht) + (uint64_t)ht->size * sizeof(*ht->table);
+   for (i = 0; i < ht->size; i++) {
+      struct bucket *b = ht->table[i];
+      while (b != NULL) {
+         if (recurse_hosts)
+            bytes += bucket_estimate_bytes(b);
+         else
+            bytes += sizeof(*b);
+         b = b->next;
+      }
+   }
+   return bytes;
+}
+
+static uint64_t
+hashtable_free_and_count_bytes(struct hashtable **htp)
+{
+   uint64_t bytes;
+
+   if ((htp == NULL) || (*htp == NULL))
+      return 0;
+
+   bytes = hashtable_estimate_bytes(*htp, 0);
+   hashtable_free(*htp);
+   *htp = NULL;
+   return bytes;
 }
 
 /*
@@ -767,6 +845,129 @@ hashtable_reduce(struct hashtable *ht)
 }
 
 static void
+hashtable_remove_oldest(struct hashtable *ht, uint32_t remove_count)
+{
+   uint32_t i, pos, rmd;
+   const struct bucket **table;
+
+   if (remove_count == 0 || ht->count == 0)
+      return;
+   if (remove_count > ht->count)
+      remove_count = ht->count;
+
+   table = xcalloc(ht->count, sizeof(*table));
+   for (pos = 0, i = 0; i < ht->size; i++) {
+      struct bucket *b = ht->table[i];
+      while (b != NULL) {
+         table[pos++] = b;
+         b = b->next;
+      }
+   }
+   assert(pos == ht->count);
+   qsort(table, ht->count, sizeof(*table), cmp_host_last_seen_oldest_first_qsort);
+
+   rmd = 0;
+   for (i = 0; i < ht->size; i++) {
+      struct bucket *last = NULL, *next, *b = ht->table[i];
+      while (b != NULL) {
+         int remove = 0;
+         uint32_t j;
+
+         for (j = 0; j < remove_count; j++) {
+            if (b == table[j]) {
+               remove = 1;
+               break;
+            }
+         }
+
+         next = b->next;
+         if (remove) {
+            ht->free_func(b);
+            free(b);
+            if (last == NULL)
+               ht->table[i] = next;
+            else
+               last->next = next;
+            rmd++;
+            ht->count--;
+         } else {
+            last = b;
+         }
+         b = next;
+      }
+   }
+
+   free(table);
+   hashtable_rehash(ht, ht->bits);
+   verbosef("memory cap: removed %u oldest hosts", rmd);
+}
+
+static uint64_t
+host_evict_child_tables(struct bucket *host)
+{
+   uint64_t freed = 0;
+
+   freed += hashtable_free_and_count_bytes(&host->u.host.ports_tcp_remote);
+   freed += hashtable_free_and_count_bytes(&host->u.host.ports_udp_remote);
+   freed += hashtable_free_and_count_bytes(&host->u.host.ports_tcp);
+   freed += hashtable_free_and_count_bytes(&host->u.host.ports_udp);
+   freed += hashtable_free_and_count_bytes(&host->u.host.ip_protos);
+
+   return freed;
+}
+
+static void
+hashtable_reduce_for_memory(struct hashtable *ht)
+{
+   const uint64_t limit_bytes = (uint64_t)opt_mem_limit_mb * 1024ULL * 1024ULL;
+   uint64_t estimate;
+   uint32_t i, remove_count;
+   const struct bucket **table;
+
+   if (limit_bytes == 0)
+      return;
+
+   estimate = hashtable_estimate_bytes(ht, 1);
+   if (estimate == 0)
+      return;
+
+   while (estimate > limit_bytes && ht->count > 0) {
+      table = xcalloc(ht->count, sizeof(*table));
+      for (i = 0, remove_count = 0; i < ht->size; i++) {
+         struct bucket *b = ht->table[i];
+         while (b != NULL) {
+            table[remove_count++] = b;
+            b = b->next;
+         }
+      }
+      qsort(table, ht->count, sizeof(*table), cmp_host_last_seen_oldest_first_qsort);
+
+      for (i = 0; i < ht->count && estimate > limit_bytes; i++) {
+         struct bucket *host = (struct bucket *)table[i];
+         uint64_t freed;
+
+         freed = host_evict_child_tables(host);
+         if (freed == 0) {
+            continue;
+         }
+         estimate -= MIN(estimate, freed);
+      }
+
+      if (estimate <= limit_bytes) {
+         free(table);
+         break;
+      }
+
+      remove_count = ht->count / 10;
+      if (remove_count == 0)
+         remove_count = 1;
+      hashtable_remove_oldest(ht, remove_count);
+      free(table);
+      estimate = hashtable_estimate_bytes(ht, 1);
+   }
+}
+
+static void
 hashtable_reap_stale(struct hashtable *ht)
 {
    uint32_t i;
@@ -801,6 +1002,7 @@ void hosts_db_reduce(void)
    hashtable_reap_stale(hosts_db);
    if (hosts_db->count >= hosts_db->count_max)
       hashtable_reduce(hosts_db);
+   hashtable_reduce_for_memory(hosts_db);
 }
 
 /* ---------------------------------------------------------------------------

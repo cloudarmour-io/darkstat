@@ -169,6 +169,10 @@ unsigned int opt_highest_port = 65535;
 static void cb_highest_port(const char *arg)
 { opt_highest_port = parsenum(arg, 65535); }
 
+unsigned int opt_mem_limit_mb = 0;
+static void cb_mem_limit_mb(const char *arg)
+{ opt_mem_limit_mb = parsenum(arg, 0); }
+
 int opt_wait_secs = -1;
 static void cb_wait_secs(const char *arg)
 { opt_wait_secs = (int)parsenum(arg, 0); }
@@ -221,6 +225,7 @@ static struct cmdline_arg cmdline_args[] = {
    {"--ports-keep",   "count",           cb_ports_keep,   0},
    {"--host-retention-hours", "hours",     cb_host_retention_hours, 0},
    {"--highest-port", "port",            cb_highest_port, 0},
+   {"--mem-limit-mb", "mb",              cb_mem_limit_mb, 0},
    {"--wait",         "secs",            cb_wait_secs,    0},
    {"--hexdump",      NULL,              cb_hexdump,      0},
    {"--version",      NULL,              cb_version,      0},
