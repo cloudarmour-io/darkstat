@@ -8,7 +8,7 @@ Wants=network-online.target
 Type=simple
 EnvironmentFile=-/etc/default/darkstat
 ExecStart=/usr/lib/darkstat/darkstat-wrapper
-Restart=on-failure
+Restart=always
 RestartSec=5s
 
 # darkstat opens capture sockets as root then drops privileges itself.
