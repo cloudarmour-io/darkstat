@@ -21,7 +21,7 @@ PORTS_MAX=60
 PORTS_KEEP=30
 HIGHEST_PORT=65535
 HOST_RETENTION_HOURS=1
-MEM_LIMIT_MB=0
+MEM_LIMIT_MB=256
 
 # Extra darkstat CLI flags appended as-is.
 # Examples:

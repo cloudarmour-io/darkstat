@@ -186,6 +186,9 @@ static void cb_help(const char *arg _unused_)
 { opt_want_help = 1; }
 static void cb_version(const char *arg _unused_)
 { opt_want_help = -1; }
+static int opt_test_reduce = 0;
+static void cb_test_reduce(const char *arg _unused_)
+{ opt_test_reduce = 1; }
 
 /* --- */
 
@@ -226,6 +229,7 @@ static struct cmdline_arg cmdline_args[] = {
    {"--host-retention-hours", "hours",     cb_host_retention_hours, 0},
    {"--highest-port", "port",            cb_highest_port, 0},
    {"--mem-limit-mb", "mb",              cb_mem_limit_mb, 0},
+   {"--test-reduce",  NULL,              cb_test_reduce,  0},
    {"--wait",         "secs",            cb_wait_secs,    0},
    {"--hexdump",      NULL,              cb_hexdump,      0},
    {"--version",      NULL,              cb_version,      0},
@@ -362,6 +366,8 @@ static void run_from_capfile(void) {
    graph_init();
    hosts_db_init();
    cap_from_file(opt_capfile);
+   if (opt_test_reduce)
+      hosts_db_reduce();
    if (export_fn != NULL) db_export(export_fn);
    hosts_db_free();
    graph_free();
