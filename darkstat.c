@@ -161,9 +161,26 @@ unsigned int opt_ports_keep = 30;
 static void cb_ports_keep(const char *arg)
 { opt_ports_keep = parsenum(arg, 65536); }
 
+unsigned int opt_host_retention_hours = 168;
+static void cb_host_retention_hours(const char *arg)
+{ opt_host_retention_hours = parsenum(arg, 24 * 3650); }
+
 unsigned int opt_highest_port = 65535;
 static void cb_highest_port(const char *arg)
 { opt_highest_port = parsenum(arg, 65535); }
+
+unsigned int opt_mem_limit_mb = 0;
+static void cb_mem_limit_mb(const char *arg)
+{ opt_mem_limit_mb = parsenum(arg, 0); }
+
+char *opt_api_key_md5 = NULL;
+static void cb_api_key_md5(const char *arg)
+{
+   free(opt_api_key_md5);
+   opt_api_key_md5 = strdup(arg);
+   if (opt_api_key_md5 == NULL)
+      err(1, "strdup");
+}
 
 int opt_wait_secs = -1;
 static void cb_wait_secs(const char *arg)
@@ -178,6 +195,9 @@ static void cb_help(const char *arg _unused_)
 { opt_want_help = 1; }
 static void cb_version(const char *arg _unused_)
 { opt_want_help = -1; }
+static int opt_test_reduce = 0;
+static void cb_test_reduce(const char *arg _unused_)
+{ opt_test_reduce = 1; }
 
 /* --- */
 
@@ -215,7 +235,11 @@ static struct cmdline_arg cmdline_args[] = {
    {"--hosts-keep",   "count",           cb_hosts_keep,   0},
    {"--ports-max",    "count",           cb_ports_max,    0},
    {"--ports-keep",   "count",           cb_ports_keep,   0},
+   {"--host-retention-hours", "hours",     cb_host_retention_hours, 0},
    {"--highest-port", "port",            cb_highest_port, 0},
+   {"--mem-limit-mb", "mb",              cb_mem_limit_mb, 0},
+   {"--api-key-md5",  "md5hex",          cb_api_key_md5,  0},
+   {"--test-reduce",  NULL,              cb_test_reduce,  0},
    {"--wait",         "secs",            cb_wait_secs,    0},
    {"--hexdump",      NULL,              cb_hexdump,      0},
    {"--version",      NULL,              cb_version,      0},
@@ -352,6 +376,8 @@ static void run_from_capfile(void) {
    graph_init();
    hosts_db_init();
    cap_from_file(opt_capfile);
+   if (opt_test_reduce)
+      hosts_db_reduce();
    if (export_fn != NULL) db_export(export_fn);
    hosts_db_free();
    graph_free();
@@ -438,6 +464,7 @@ main(int argc, char **argv)
 
       timer_start(&t);
       now_update();
+      hosts_db_reduce();
 
       if (export_pending) {
          if (export_fn != NULL)

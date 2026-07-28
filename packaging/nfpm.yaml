@@ -1,4 +1,4 @@
-name: darkstat
+name: darkstat-nw
 arch: "${GOARCH}"
 platform: linux
 version: "${VERSION}"
@@ -34,17 +34,17 @@ contents:
       mode: 0755
 
   # Wrapper script
-  - src: debian/darkstat-wrapper
-    dst: /usr/lib/darkstat/darkstat-wrapper
+  - src: debian/darkstat-nw-wrapper
+    dst: /usr/lib/darkstat-nw/darkstat-nw-wrapper
     file_info:
       mode: 0755
 
-  - src: debian/darkstat.service
-    dst: /usr/lib/systemd/system/darkstat.service
+  - src: debian/darkstat-nw.service
+    dst: /usr/lib/systemd/system/darkstat-nw.service
 
   # Default config
-  - src: debian/darkstat.default
-    dst: /etc/default/darkstat
+  - src: debian/darkstat-nw.default
+    dst: /etc/default/darkstat-nw
     type: config|noreplace
 
   # Man page
@@ -54,12 +54,12 @@ contents:
       mode: 0644
 
   # State directory
-  - dst: /var/lib/darkstat
+  - dst: /var/lib/darkstat-nw
     type: dir
     file_info:
       mode: 0750
-      owner: darkstat
-      group: darkstat
+      owner: darkstat-nw
+      group: darkstat-nw
 
 scripts:
   postinstall: packaging/scripts/postinst.sh

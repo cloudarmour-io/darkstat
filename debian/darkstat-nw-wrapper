@@ -1,0 +1,92 @@
+#!/bin/sh
+set -eu
+
+: "${START_DARKSTAT:=true}"
+: "${INTERFACES:=}"
+: "${PORT:=667}"
+: "${BINDADDR:=}"
+: "${BASE_PATH:=/}"
+: "${HOSTS_MAX:=1000}"
+: "${HOSTS_KEEP:=500}"
+: "${PORTS_MAX:=60}"
+: "${PORTS_KEEP:=30}"
+: "${HIGHEST_PORT:=65535}"
+: "${HOST_RETENTION_HOURS:=168}"
+: "${MEM_LIMIT_MB:=0}"
+: "${API_KEY:=}"
+: "${EXTRA_OPTS:=}"
+
+case "${START_DARKSTAT}" in
+  1|yes|true|TRUE|Yes|YES)
+    ;;
+  *)
+    echo "darkstat disabled by START_DARKSTAT=${START_DARKSTAT}" >&2
+    exit 1
+    ;;
+esac
+
+if [ -z "${INTERFACES}" ]; then
+  INTERFACES=$(ip route show default 2>/dev/null | awk '/^default/ { print $5; exit }')
+  if [ -z "${INTERFACES}" ]; then
+    echo "INTERFACES is empty and no default route found; set INTERFACES in /etc/default/darkstat-nw" >&2
+    exit 1
+  fi
+  echo "INTERFACES not set, auto-detected: ${INTERFACES}" >&2
+fi
+
+set -- /usr/sbin/darkstat --no-daemon --syslog --user darkstat-nw
+
+for iface in ${INTERFACES}; do
+  set -- "$@" -i "${iface}"
+done
+
+set -- "$@" -p "${PORT}"
+
+if [ -n "${BINDADDR}" ]; then
+  for bindaddr in ${BINDADDR}; do
+    set -- "$@" -b "${bindaddr}"
+  done
+fi
+
+if [ -n "${BASE_PATH}" ]; then
+  set -- "$@" --base "${BASE_PATH}"
+fi
+
+if [ -n "${HOSTS_MAX}" ]; then
+  set -- "$@" --hosts-max "${HOSTS_MAX}"
+fi
+
+if [ -n "${HOSTS_KEEP}" ]; then
+  set -- "$@" --hosts-keep "${HOSTS_KEEP}"
+fi
+
+if [ -n "${PORTS_MAX}" ]; then
+  set -- "$@" --ports-max "${PORTS_MAX}"
+fi
+
+if [ -n "${PORTS_KEEP}" ]; then
+  set -- "$@" --ports-keep "${PORTS_KEEP}"
+fi
+
+if [ -n "${HIGHEST_PORT}" ]; then
+  set -- "$@" --highest-port "${HIGHEST_PORT}"
+fi
+
+if [ -n "${HOST_RETENTION_HOURS}" ]; then
+  set -- "$@" --host-retention-hours "${HOST_RETENTION_HOURS}"
+fi
+
+if [ -n "${MEM_LIMIT_MB}" ] && [ "${MEM_LIMIT_MB}" != "0" ]; then
+  set -- "$@" --mem-limit-mb "${MEM_LIMIT_MB}"
+fi
+
+if [ -n "${API_KEY}" ]; then
+  set -- "$@" --api-key-md5 "${API_KEY}"
+fi
+
+if [ -n "${EXTRA_OPTS}" ]; then
+  # shellcheck disable=SC2086
+  set -- "$@" ${EXTRA_OPTS}
+fi
+
+exec "$@"

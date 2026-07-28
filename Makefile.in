@@ -127,6 +127,7 @@ linktypes_test: linktypes_test.o linktypes.o
 check: addr_test linktypes_test
 	./addr_test
 	./linktypes_test
+	./tests/run.sh
 	@echo All tests pass.
 
 .PHONY: all install clean depend check

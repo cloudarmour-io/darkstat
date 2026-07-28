@@ -8,9 +8,11 @@ hex-ify
 c-ify
 config.h
 config.h.in
+config.h.in~
 config.log
 config.status
 configure
+configure~
 configure.lineno
 darkstat
 darkstat.8
@@ -19,5 +21,6 @@ stylecss.h
 favicon.h
 addr_test
 linktypes_test
+install-sh~
 
 packaging/dist/*

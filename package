@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: ./package -v VERSION
+
+Build amd64 and arm64 packages into packaging/dist/.
+
+Options:
+  -v, --version VERSION   Package version to embed in filenames and metadata
+  -h, --help              Show this help
+EOF
+}
+
+version=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v|--version)
+      if [[ $# -lt 2 ]]; then
+        echo "error: --version requires a value" >&2
+        exit 1
+      fi
+      version="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "error: unknown argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$version" ]]; then
+  echo "error: version is required" >&2
+  usage >&2
+  exit 1
+fi
+
+if ! command -v nfpm >/dev/null 2>&1; then
+  echo "error: nfpm is not installed or not on PATH" >&2
+  exit 1
+fi
+
+mkdir -p packaging/dist
+
+sed -i.bak -E "s/^(AC_INIT\(\[darkstat\],\[)[^]]*(\].*)/\1${version}\2/" configure.ac
+rm -f configure.ac.bak
+
+build_amd64() {
+  echo "==> Building amd64"
+  make clean
+  autoreconf -fi
+  ./configure --prefix=/usr --sbindir=/usr/sbin --with-privdrop-user=darkstat
+  make -j"$(nproc)"
+  VERSION="$version" GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
+  VERSION="$version" GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
+}
+
+build_arm64() {
+  echo "==> Building arm64"
+  make clean
+  ./configure --host=aarch64-linux-gnu --prefix=/usr --sbindir=/usr/sbin \
+    --with-privdrop-user=darkstat CC=aarch64-linux-gnu-gcc
+  make -j"$(nproc)" HOSTCC=gcc HOSTCFLAGS=
+  VERSION="$version" GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
+  VERSION="$version" GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
+}
+
+build_amd64
+build_arm64
+
+echo "Packages written to packaging/dist/"

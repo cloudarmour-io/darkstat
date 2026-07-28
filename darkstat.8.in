@@ -68,6 +68,10 @@ darkstat \- network statistics gatherer
 ] [
 .BI \-\-highest\-port " port"
 ] [
+.BI \-\-host\-retention\-hours " hours"
+] [
+.BI \-\-mem\-limit\-mb " mb"
+] [
 .BI \-\-wait " secs"
 ] [
 .BI \-\-hexdump
@@ -169,6 +173,16 @@ The default is 667.
 .BI \-b " bindaddr"
 Bind the web interface to the specified address.
 The default is to listen on all interfaces.
+If \fIdarkstat\fR is bound only to \fB127.0.0.1\fR or \fB::1\fR,
+the web interface does not require authentication.
+If it is bound to any other address, requests must present a valid API key.
+.\"
+.TP
+.BI \-\-api\-key\-md5 " md5hex"
+Set the API key hash used to authenticate requests when the web interface
+is exposed on a non-loopback address.
+The client should send the plain password; \fIdarkstat\fR hashes it with MD5
+and compares the result against this value.
 .\"
 .TP
 .BI \-\-base " path"
@@ -314,6 +328,8 @@ The number of
 .BI \-\-hosts\-max
 must be greater than
 .BI \-\-hosts\-keep
+.
+Hosts that have not been seen for 7 days are also removed automatically.
 .\"
 .TP
 .BI \-\-hosts\-keep " count"
@@ -323,6 +339,10 @@ and traffic is seen from a new host, we clean out the hosts table,
 keeping only the top
 .BI \-\-hosts\-keep
 number of hosts, sorted by total traffic.
+This is a safety cap; stale hosts are still removed after 7 days even if
+the table never reaches
+.BI \-\-hosts\-max
+.
 .\"
 .TP
 .BI \-\-ports\-max " count"
@@ -345,6 +365,22 @@ per-host ports tables, although their traffic will still be accounted
 for.
 This can be used to hide ephemeral ports.
 By default, all ports are tracked.
+.\"
+.TP
+.BI \-\-host\-retention\-hours " hours"
+Host records that have been inactive for longer than this many hours
+are removed from memory.
+The default is 168 hours (7 days).
+.\"
+.TP
+.BI \-\-mem\-limit\-mb " mb"
+An approximate memory budget, in megabytes, for the in-memory hosts
+table.
+When the estimated size of the table exceeds this limit, per-host
+port and protocol detail tables are discarded first; if that is not
+enough, the oldest hosts are evicted entirely until the table is back
+under budget.
+A value of 0 (the default) disables this limit.
 .\"
 .TP
 .BI \-\-wait " secs"
