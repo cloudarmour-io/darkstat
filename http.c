@@ -337,16 +337,46 @@ static int consttime_eq(const char *a, const char *b)
     return diff == 0;
 }
 
-static int sockaddr_is_loopback(const struct sockaddr *sa)
+static int sockaddr_is_private_bindaddr(const struct sockaddr *sa)
 {
     if (sa->sa_family == AF_INET) {
         const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
-        return (ntohl(sin->sin_addr.s_addr) >> 24) == 127;
+        uint32_t ip = ntohl(sin->sin_addr.s_addr);
+
+        if (ip == INADDR_ANY)
+            return 0;
+        if ((ip >> 24) == 127)
+            return 1;
+        if ((ip >> 24) == 10)
+            return 1;
+        if ((ip >> 16) == ((172 << 8) | 16) || (ip >> 16) == ((172 << 8) | 17) ||
+            (ip >> 16) == ((172 << 8) | 18) || (ip >> 16) == ((172 << 8) | 19) ||
+            (ip >> 16) == ((172 << 8) | 20) || (ip >> 16) == ((172 << 8) | 21) ||
+            (ip >> 16) == ((172 << 8) | 22) || (ip >> 16) == ((172 << 8) | 23) ||
+            (ip >> 16) == ((172 << 8) | 24) || (ip >> 16) == ((172 << 8) | 25) ||
+            (ip >> 16) == ((172 << 8) | 26) || (ip >> 16) == ((172 << 8) | 27) ||
+            (ip >> 16) == ((172 << 8) | 28) || (ip >> 16) == ((172 << 8) | 29) ||
+            (ip >> 16) == ((172 << 8) | 30) || (ip >> 16) == ((172 << 8) | 31))
+            return 1;
+        if ((ip >> 16) == ((192 << 8) | 168))
+            return 1;
+        if ((ip >> 16) == ((169 << 8) | 254))
+            return 1;
+        return 0;
     }
     if (sa->sa_family == AF_INET6) {
         const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
-        return memcmp(&sin6->sin6_addr, &in6addr_loopback,
-                      sizeof(in6addr_loopback)) == 0;
+        const uint8_t *addr = sin6->sin6_addr.s6_addr;
+
+        if (IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr))
+            return 0;
+        if (IN6_IS_ADDR_LOOPBACK(&sin6->sin6_addr))
+            return 1;
+        if ((addr[0] & 0xfe) == 0xfc)
+            return 1; /* fc00::/7 unique local */
+        if (addr[0] == 0xfe && (addr[1] & 0xc0) == 0x80)
+            return 1; /* fe80::/10 link-local */
+        return 0;
     }
     return 0;
 }
@@ -1416,7 +1446,7 @@ static void http_listen_one(struct addrinfo *ai,
     /* add to insocks */
     insocks = xrealloc(insocks, sizeof(*insocks) * (insock_num + 1));
     insocks[insock_num].sock = sockin;
-    insocks[insock_num].auth_required = !sockaddr_is_loopback(ai->ai_addr);
+    insocks[insock_num].auth_required = !sockaddr_is_private_bindaddr(ai->ai_addr);
     insock_num++;
 }
 

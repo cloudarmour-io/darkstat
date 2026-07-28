@@ -140,8 +140,9 @@ Auth behavior:
 
 - If darkstat only binds to `127.0.0.1` or `::1`, the web UI does not require auth.
 - If darkstat binds to any other address, the web UI requires an API key.
-- `API_KEY` must contain the MD5 hash of the password. The browser/client sends the
-  plain password, darkstat hashes it with MD5, and compares the result to `API_KEY`.
+- `API_KEY` must contain the MD5 hash of the password.
+- The browser/client/backend sends the plain password, darkstat hashes it with MD5,
+  and compares the result to `API_KEY`.
 
 ## CI / Automated Builds
 

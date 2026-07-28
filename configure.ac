@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([darkstat],[0.0.10],[],[],[https://unix4lyfe.org/darkstat/])
+AC_INIT([darkstat],[0.0.12],[],[],[https://unix4lyfe.org/darkstat/])
 AC_CONFIG_SRCDIR([darkstat.c])
 AC_CONFIG_HEADERS([config.h])
 

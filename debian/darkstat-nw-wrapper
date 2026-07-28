@@ -43,7 +43,9 @@ done
 set -- "$@" -p "${PORT}"
 
 if [ -n "${BINDADDR}" ]; then
-  set -- "$@" -b "${BINDADDR}"
+  for bindaddr in ${BINDADDR}; do
+    set -- "$@" -b "${bindaddr}"
+  done
 fi
 
 if [ -n "${BASE_PATH}" ]; then

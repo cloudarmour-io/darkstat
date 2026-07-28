@@ -9,13 +9,27 @@
 # The default is 168 hours (7 days).
 # Adjust these to tune in-memory table sizes.
 # Set MEM_LIMIT_MB to your target memory cap for the darkstat-nw wrapper.
-# Set API_KEY to the MD5 hash of the API password. Leave blank to disable auth
-# when binding only to localhost.
+
+# Set API_KEY to the MD5 hash of the API password.
+# Example:
+#   printf '%s' '1234' | md5sum
+#   # 81dc9bdb52d04dc20036dbd8313ed055  -
+# Then set:
+#   API_KEY=81dc9bdb52d04dc20036dbd8313ed055
+#
+# darkstat uses HTTP Basic Auth for public binds, so browsers will show both
+# Username and Password fields. The username is ignored by darkstat; only the
+# password is checked after hashing.
+# Leave API_KEY blank/commented out to disable auth for private/loopback binds.
 
 START_DARKSTAT=true
 INTERFACES=
 PORT=1667
-BINDADDR=
+# BINDADDR can be one IP address or multiple space-separated addresses.
+# Examples:
+#   BINDADDR=127.0.0.1
+#   BINDADDR="127.0.0.1 192.168.0.111 192.168.0.112"
+BINDADDR="127.0.0.1 192.168.0.111"
 BASE_PATH=/
 HOSTS_MAX=1000
 HOSTS_KEEP=500
@@ -24,7 +38,7 @@ PORTS_KEEP=30
 HIGHEST_PORT=65535
 HOST_RETENTION_HOURS=1
 MEM_LIMIT_MB=256
-API_KEY=
+#API_KEY=
 
 # Extra darkstat CLI flags appended as-is.
 # Examples:
