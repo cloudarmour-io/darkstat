@@ -27,3 +27,9 @@ require_line debian/darkstat-nw-wrapper '  set -- "$@" --highest-port "${HIGHEST
 require_line debian/darkstat-nw-wrapper '  set -- "$@" --host-retention-hours "${HOST_RETENTION_HOURS}"'
 require_line debian/darkstat-nw-wrapper '  set -- "$@" --mem-limit-mb "${MEM_LIMIT_MB}"'
 require_line debian/darkstat-nw-wrapper '  set -- "$@" --api-key-md5 "${API_KEY}"'
+
+require_line debian/darkstat-nw-wrapper ': "${PORT:=1667}"'
+if grep -q 'PORT:=667}' debian/darkstat-nw-wrapper; then
+  echo "wrapper PORT fallback must be 1667" >&2
+  exit 1
+fi
