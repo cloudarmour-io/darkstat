@@ -1,20 +1,29 @@
-darkstat Debian packaging notes
-==============================
+NOTE: the supported package is built with nfpm from packaging/nfpm.yaml (package
+name darkstat-nw). The Debian-style files in this directory (control, postinst,
+rules) are legacy and are NOT used by that build. See packaging/README.md.
+
+darkstat-nw packaging notes
+===========================
 
 Service configuration
 ---------------------
 
-Edit /etc/default/darkstat and set:
+Edit /etc/default/darkstat-nw and set:
 
-  INTERFACE=<linux-interface>
+  INTERFACES="<linux-interface>"   (space-separated for several)
 
-Then restart:
+INTERFACES is auto-detected from the default route at install time when blank.
+The package enables the service (systemctl enable) but does not start it.
+Review the file, then start it:
 
-  sudo systemctl restart darkstat
+  sudo systemctl start darkstat-nw
+
+The default bind is loopback only (BINDADDR="127.0.0.1"); binding any
+non-private address requires API_KEY. Default port is 1667.
 
 JSON endpoint test
 ------------------
 
 After traffic is flowing, verify JSON export:
 
-  curl -s http://127.0.0.1:667/json | jq .
+  curl -s http://127.0.0.1:1667/json | jq .

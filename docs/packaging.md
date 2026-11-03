@@ -2,6 +2,12 @@
 
 This branch uses a Debian-style wrapper plus nfpm packaging metadata.
 
+NOTE: the nfpm package (`packaging/nfpm.yaml`) is the supported build. The
+Debian-style files in `debian/` (`control`, `postinst`, `rules`, and the old
+`darkstat` package layout) are legacy and are not used by it. Only
+`darkstat-nw-wrapper`, `darkstat-nw.default` and `darkstat-nw.service` from
+`debian/` are shipped.
+
 ## Main Files
 
 - `debian/darkstat-nw-wrapper`
@@ -20,7 +26,7 @@ Typical values in this branch:
 - `START_DARKSTAT=true`
 - `INTERFACES=eth0`
 - `PORT=1667`
-- `BINDADDR=`
+- `BINDADDR="127.0.0.1"`
 - `BASE_PATH=/`
 - `HOSTS_MAX=1000`
 - `HOSTS_KEEP=500`
@@ -36,7 +42,7 @@ Typical values in this branch:
 - `START_DARKSTAT` controls whether the wrapper starts the service.
 - `INTERFACES` is the list of interfaces to monitor.
 - `PORT` is the HTTP port for the web UI.
-- `BINDADDR` selects the address darkstat binds to.
+- `BINDADDR` selects the address(es) darkstat binds to (default loopback only). Loopback and private addresses need no auth; any other bind (including `0.0.0.0`/`::`) requires `API_KEY`, otherwise those listeners return 401.
 - `BASE_PATH` sets the UI base path.
 - `HOSTS_MAX` and `HOSTS_KEEP` control host-table trimming.
 - `PORTS_MAX` and `PORTS_KEEP` control per-host port trimming.
@@ -56,3 +62,28 @@ The wrapper:
 
 This keeps the package configuration separate from the binary.
 
+
+## Install and Start Behavior
+
+- The `postinst` script creates the `darkstat-nw` user and `/var/lib/darkstat-nw`,
+  and runs `systemctl enable darkstat-nw`. It deliberately does **not** start the
+  service. Reason: the operator should review `/etc/default/darkstat-nw`
+  (interfaces, bind address, `API_KEY`) before a packet-capturing daemon runs.
+- Start it with `sudo systemctl start darkstat-nw` (then `systemctl status darkstat-nw`).
+  It starts automatically on the next boot because it is enabled.
+- `INTERFACES` is auto-detected at install time from the default route
+  (`ip route show default`) and written into `/etc/default/darkstat-nw` when it
+  is blank. If no default route exists then, it is left blank and the installer
+  tells you to edit it.
+- At service start, if `INTERFACES` is still blank the wrapper tries the default
+  route again. With no default route it logs an error and exits 1; the unit has
+  `Restart=always` / `RestartSec=5s`, so systemd retries every 5 seconds until
+  `INTERFACES` is set or a default route appears.
+- The unit runs as root only to open capture sockets; darkstat drops privileges
+  itself (`--user darkstat-nw`).
+
+## NeuroWall Integration
+
+NeuroWall's `/api/v1/darkstat` returns HTTP 409 when darkstat is disabled in
+NeuroWall's own configuration. It does not return 409 because darkstat is down
+or unreachable.
