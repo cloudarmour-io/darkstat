@@ -4,8 +4,14 @@ Darkstat now supports bind-aware authentication.
 
 ## Behavior
 
-- If darkstat binds only to `127.0.0.1` or `::1`, no authentication is needed.
-- If darkstat binds to any other address, authentication is required.
+- A listener on a **private** address needs no authentication: loopback (`127.0.0.0/8`, `::1`), RFC 1918 (`10.0.0.0/8`,
+  `172.16.0.0/12`, `192.168.0.0/16`), link-local (`169.254.0.0/16`, `fe80::/10`) and IPv6 unique-local (`fc00::/7`).
+  This is `sockaddr_is_private_bindaddr` in `http.c`; an earlier version of this page wrongly said "only loopback".
+- A listener on any other address, including the wildcards `0.0.0.0` and `::`, requires the API key.
+- With such a listener and no `API_KEY` configured, darkstat still starts, warns, and answers every request on that
+  listener with `401 Unauthorized`.
+- Because private LAN addresses are exempt, binding to a LAN address exposes the traffic data to everyone on that LAN
+  without a password. The packaged default therefore binds `127.0.0.1` only; add a LAN address deliberately.
 
 ## How It Works
 

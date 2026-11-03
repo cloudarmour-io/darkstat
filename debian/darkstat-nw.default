@@ -20,16 +20,21 @@
 # darkstat uses HTTP Basic Auth for public binds, so browsers will show both
 # Username and Password fields. The username is ignored by darkstat; only the
 # password is checked after hashing.
-# Leave API_KEY blank/commented out to disable auth for private/loopback binds.
+# Leave API_KEY blank/commented out only when binding loopback/private addresses.
 
 START_DARKSTAT=true
 INTERFACES=
 PORT=1667
 # BINDADDR can be one IP address or multiple space-separated addresses.
+# The shipped default is loopback only (web UI reachable from this host only).
 # Examples:
 #   BINDADDR=127.0.0.1
-#   BINDADDR="127.0.0.1 192.168.0.111 192.168.0.112"
-BINDADDR="127.0.0.1 192.168.0.111"
+#   BINDADDR="127.0.0.1 192.0.2.10 198.51.100.10"
+# Authentication follows the bind address: a listener on loopback or a private
+# address (10/8, 172.16/12, 192.168/16, 169.254/16, ::1, fc00::/7, fe80::/10)
+# needs no API_KEY. A listener on any other address, including 0.0.0.0 and ::,
+# requires API_KEY; without it those listeners answer 401 Unauthorized.
+BINDADDR="127.0.0.1"
 BASE_PATH=/
 HOSTS_MAX=1000
 HOSTS_KEEP=500

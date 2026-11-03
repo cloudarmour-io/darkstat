@@ -1,5 +1,11 @@
 # darkstat-nw Packaging Guide
 
+NOTE: the nfpm package (`packaging/nfpm.yaml`) is the supported build. The
+Debian-style files in `debian/` (`control`, `postinst`, `rules`, and the old
+`darkstat` package layout) are legacy and are not used by it. Only
+`darkstat-nw-wrapper`, `darkstat-nw.default` and `darkstat-nw.service` from
+`debian/` are shipped.
+
 This directory contains the nfpm-based packaging setup for building `.deb` and `.rpm` packages for darkstat-nw across `amd64` and `arm64` architectures.
 
 ## Prerequisites
@@ -51,10 +57,14 @@ autoreconf -fi
 ./configure --prefix=/usr --sbindir=/usr/sbin --with-privdrop-user=darkstat
 make -j$(nproc)
 
-# 2. Create output directory
+# 2. Verify the binary really is amd64 (nfpm only labels the package; a stale cross-built binary would be packaged
+#    into an "amd64" deb and fail on the target with "Exec format error")
+packaging/check-binary-arch.sh darkstat amd64
+
+# 3. Create output directory
 mkdir -p packaging/dist
 
-# 3. Build packages
+# 4. Build packages
 VERSION=1.1.0 GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
 VERSION=1.1.0 GOARCH=amd64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
 ```
@@ -73,7 +83,8 @@ make clean
     --with-privdrop-user=darkstat CC=aarch64-linux-gnu-gcc
 make -j$(nproc)
 
-# Build packages
+# Verify the binary really is arm64, then build packages
+packaging/check-binary-arch.sh darkstat arm64
 mkdir -p packaging/dist
 VERSION=1.1.0 GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager deb --target packaging/dist/
 VERSION=1.1.0 GOARCH=arm64 nfpm package --config packaging/nfpm.yaml --packager rpm --target packaging/dist/
@@ -110,7 +121,7 @@ Edit `/etc/default/darkstat-nw` after install:
 START_DARKSTAT=true
 INTERFACES=eth0     # leave blank to auto-detect from default route
 PORT=1667
-BINDADDR=
+BINDADDR=127.0.0.1     # loopback only; non-private binds require API_KEY
 BASE_PATH=/
 HOSTS_MAX=1000
 HOSTS_KEEP=500
@@ -122,6 +133,8 @@ MEM_LIMIT_MB=0
 API_KEY=
 EXTRA_OPTS=
 ```
+
+The package enables the service but does not start it; see `docs/packaging.md`.
 
 If `INTERFACES` is left blank, the wrapper auto-detects it from the system default route via `ip route show default`. The detected interface is logged to the journal.
 
@@ -138,8 +151,8 @@ These variables map to the existing darkstat options:
 
 Auth behavior:
 
-- If darkstat only binds to `127.0.0.1` or `::1`, the web UI does not require auth.
-- If darkstat binds to any other address, the web UI requires an API key.
+- If every bind address is loopback or private (10/8, 172.16/12, 192.168/16, 169.254/16, `::1`, fc00::/7, fe80::/10), no auth is required.
+- If darkstat binds to any other address (public, `0.0.0.0`, `::`), the web UI requires an API key; without `API_KEY` those listeners return 401.
 - `API_KEY` must contain the MD5 hash of the password.
 - The browser/client/backend sends the plain password, darkstat hashes it with MD5,
   and compares the result to `API_KEY`.

@@ -27,8 +27,8 @@ sudo systemctl enable --now darkstat
 ## Validate JSON endpoint
 
 ```bash
-curl -i http://127.0.0.1:667/json
-curl -s http://127.0.0.1:667/json | jq .
+curl -i http://127.0.0.1:1667/json
+curl -s http://127.0.0.1:1667/json | jq .
 ```
 
 ## Publish in your own APT repo

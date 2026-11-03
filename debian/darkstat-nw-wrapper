@@ -3,7 +3,7 @@ set -eu
 
 : "${START_DARKSTAT:=true}"
 : "${INTERFACES:=}"
-: "${PORT:=667}"
+: "${PORT:=1667}"
 : "${BINDADDR:=}"
 : "${BASE_PATH:=/}"
 : "${HOSTS_MAX:=1000}"
